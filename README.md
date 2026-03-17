@@ -1,4 +1,4 @@
-<img width="1920" height="945" alt="b386e9a7f94c2398d7d856e88b3953af" src="https://github.com/user-attachments/assets/9f905113-dc63-4691-bd39-d31b064a5958" />
+<img width="1920" height="945" alt="87671fda2555fdab3a0d376a643e6f82" src="https://github.com/user-attachments/assets/c6225339-9d3b-4c3a-91a1-5707604cd08a" />
 
 # mud-agent
 
