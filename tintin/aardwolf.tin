@@ -1,0 +1,21 @@
+#nop Aardwolf TinTin++ session bootstrap.
+
+#format {session_name} {aardwolf}
+#format {session_host} {aardmud.org}
+#format {session_port} {4000}
+
+#alias {reconnect} {
+    #session {$session_name} {$session_host} {$session_port}
+}
+
+#alias {quitmud} {
+    quit
+}
+
+#alias {lookshort} {
+    brief
+    look
+}
+
+#showme {Starting Aardwolf session to $session_host:$session_port}
+#session {$session_name} {$session_host} {$session_port}

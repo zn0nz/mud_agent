@@ -1,0 +1,13 @@
+{
+  "name": "mud-agent",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @mud-agent/server",
+    "start": "npm run start -w @mud-agent/server",
+    "quickstart": "bash start.sh"
+  }
+}

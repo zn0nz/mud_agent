@@ -1,0 +1,3046 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MUD Agent</title>
+    <link rel="stylesheet" href="/vendor/xterm/xterm.css" />
+    <style>
+      :root {
+        --sidebar-width: 292px;
+        --topbar-height: 52px;
+        --tmux-font-size: 14px;
+        --radius: 14px;
+        --radius-sm: 10px;
+        --shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+        --ansi-black: #101418;
+        --ansi-red: #f07178;
+        --ansi-green: #8ccf7e;
+        --ansi-yellow: #e6c15a;
+        --ansi-blue: #6cb6ff;
+        --ansi-magenta: #c792ea;
+        --ansi-cyan: #7fdbca;
+        --ansi-white: #d9e1e8;
+        --ansi-bright-black: #65737e;
+        --ansi-bright-red: #ff8b8b;
+        --ansi-bright-green: #a4e57e;
+        --ansi-bright-yellow: #ffd866;
+        --ansi-bright-blue: #82aaff;
+        --ansi-bright-magenta: #e1acff;
+        --ansi-bright-cyan: #9aedfe;
+        --ansi-bright-white: #ffffff;
+      }
+
+      body[data-theme="dark"] {
+        --bg: #0f1218;
+        --bg-elevated: #141922;
+        --bg-panel: #171c25;
+        --bg-panel-2: #1c2230;
+        --bg-sidebar: #11161d;
+        --bg-input: #161c27;
+        --bg-terminal: #0c1117;
+        --text: #edf2f7;
+        --muted: #8b97ab;
+        --muted-strong: #aeb7c5;
+        --line: #232b38;
+        --line-soft: rgba(255, 255, 255, 0.06);
+        --accent: #ef8354;
+        --accent-soft: rgba(239, 131, 84, 0.14);
+        --ok: #4ade80;
+        --warn: #f59e0b;
+        --danger: #f87171;
+        --status-bg: rgba(255, 255, 255, 0.04);
+      }
+
+      body[data-theme="light"] {
+        --bg: #f3f6fb;
+        --bg-elevated: #ffffff;
+        --bg-panel: #ffffff;
+        --bg-panel-2: #f7f9fc;
+        --bg-sidebar: #eef2f8;
+        --bg-input: #f7f9fd;
+        --bg-terminal: #f4f7fb;
+        --text: #1c2430;
+        --muted: #667489;
+        --muted-strong: #49576d;
+        --line: #d8e0ea;
+        --line-soft: rgba(28, 36, 48, 0.08);
+        --accent: #d65d2f;
+        --accent-soft: rgba(214, 93, 47, 0.1);
+        --ok: #15803d;
+        --warn: #b45309;
+        --danger: #b91c1c;
+        --status-bg: rgba(28, 36, 48, 0.04);
+        --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at top left, rgba(239, 131, 84, 0.08), transparent 24%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+        color: var(--text);
+        font: 13px/1.45 "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+
+      body[data-theme="light"] {
+        background:
+          radial-gradient(circle at top left, rgba(214, 93, 47, 0.06), transparent 22%),
+          linear-gradient(180deg, #f5f7fb 0%, #eef2f7 100%);
+      }
+
+      *::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+
+      *::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      *::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: 999px;
+        background: rgba(139, 151, 171, 0.3);
+        background-clip: padding-box;
+      }
+
+      button,
+      input,
+      select,
+      textarea,
+      label {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: #fff;
+        background: var(--accent);
+        cursor: pointer;
+        transition:
+          background 140ms ease,
+          border-color 140ms ease,
+          color 140ms ease,
+          opacity 140ms ease,
+          transform 140ms ease;
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      button.secondary,
+      .icon-button,
+      .nav-item {
+        color: var(--text);
+        background: transparent;
+        border: 1px solid var(--line);
+      }
+
+      button.danger {
+        color: #fff;
+        background: rgba(248, 113, 113, 0.16);
+        border: 1px solid rgba(248, 113, 113, 0.34);
+      }
+
+      button.small {
+        min-width: 40px;
+        padding: 8px 10px;
+      }
+
+      button:focus-visible,
+      input:focus,
+      select:focus,
+      textarea:focus,
+      .nav-item:focus-visible {
+        outline: none;
+        border-color: rgba(239, 131, 84, 0.75);
+        box-shadow: 0 0 0 3px rgba(239, 131, 84, 0.16);
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        margin-top: 6px;
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        color: var(--text);
+        background: var(--bg-input);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+      }
+
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+
+      label {
+        display: block;
+        color: var(--muted-strong);
+        font-size: 12px;
+      }
+
+      .app-shell {
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        height: var(--topbar-height);
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(17, 22, 29, 0.94);
+        backdrop-filter: blur(10px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      body[data-theme="light"] .topbar {
+        background: rgba(255, 255, 255, 0.92);
+      }
+
+      .topbar-left,
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .icon-button {
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 15px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        background: linear-gradient(135deg, var(--accent), #ffb08f);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+
+      .brand-copy {
+        min-width: 0;
+      }
+
+      .brand-title {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .brand-subtitle {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+
+      .status-cluster {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--status-bg);
+        color: var(--muted-strong);
+        white-space: nowrap;
+      }
+
+      .status-pill::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+
+      .status-pill.ok::before {
+        background: var(--ok);
+      }
+
+      .status-pill.warn::before {
+        background: var(--warn);
+      }
+
+      .status-pill.error::before {
+        background: var(--danger);
+      }
+
+      .status-pill.neutral::before {
+        background: var(--muted);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+        height: calc(100vh - var(--topbar-height));
+        transition: grid-template-columns 180ms ease;
+        overflow: hidden;
+      }
+
+      .layout.sidebar-collapsed {
+        grid-template-columns: 1px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        padding: 12px 10px;
+        border-right: 1px solid var(--line);
+        background: var(--bg-sidebar);
+        overflow: auto;
+        transition:
+          padding 180ms ease,
+          background 180ms ease,
+          border-color 180ms ease;
+      }
+
+      .layout.sidebar-collapsed .sidebar {
+        padding: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      .nav-section + .nav-section {
+        margin-top: 10px;
+      }
+
+      .nav-label {
+        margin: 0 10px 8px;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .layout.sidebar-collapsed .nav-label,
+      .layout.sidebar-collapsed .nav-text,
+      .layout.sidebar-collapsed .sidebar-footer-copy,
+      .layout.sidebar-collapsed .sidebar-footer-title {
+        display: none;
+      }
+
+      .layout.sidebar-collapsed .sidebar > * {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .nav-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 4px;
+        padding: 9px 10px;
+        border-radius: 10px;
+        text-align: left;
+      }
+
+      .nav-item.active {
+        background: var(--accent-soft);
+        border-color: rgba(239, 131, 84, 0.3);
+        color: var(--text);
+      }
+
+      .nav-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--muted);
+        flex: 0 0 auto;
+      }
+
+      .nav-item.active .nav-dot {
+        background: var(--accent);
+      }
+
+      .sidebar-footer {
+        margin-top: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--bg-panel);
+      }
+
+      .sidebar-footer-title {
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .sidebar-footer-copy {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .content {
+        padding: 12px;
+        height: 100%;
+        overflow: hidden;
+        min-width: 0;
+      }
+
+      .page {
+        display: none;
+        gap: 16px;
+        min-height: 0;
+      }
+
+      .page.active {
+        display: grid;
+        height: 100%;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .page[data-page="controls"].active {
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+      }
+
+      .page[data-page="settings"].active {
+        overflow: auto;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .page-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      .page-copy {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--status-bg);
+        color: var(--muted-strong);
+      }
+
+      .banner {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(239, 131, 84, 0.26);
+        background: rgba(239, 131, 84, 0.08);
+        color: var(--muted-strong);
+      }
+
+      .banner.active {
+        display: flex;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .summary-card,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-panel);
+        box-shadow: var(--shadow);
+      }
+
+      .summary-card {
+        padding: 16px;
+      }
+
+      .summary-label {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .summary-value {
+        margin-top: 10px;
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 1.05;
+        word-break: break-word;
+      }
+
+      .summary-note {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .overview-grid {
+        display: grid;
+        grid-template-columns: minmax(320px, 1.2fr) minmax(300px, 1fr);
+        gap: 16px;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .panel-title {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .panel-copy {
+        margin-top: 4px;
+        color: var(--muted);
+      }
+
+      .panel-actions,
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .panel-actions {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .panel-actions > * {
+        flex: 0 0 auto;
+      }
+
+      .row > * {
+        flex: 1 1 120px;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .info-card {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--bg-panel-2);
+      }
+
+      .info-card-label {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .info-card-value {
+        margin-top: 6px;
+        font-size: 18px;
+        font-weight: 600;
+        word-break: break-word;
+      }
+
+      .info-card-copy {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .kv-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .kv-item {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--bg-panel-2);
+      }
+
+      .kv-item span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .kv-item strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 15px;
+        word-break: break-word;
+      }
+
+      .controls-grid {
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .controls-stack,
+      .settings-stack {
+        display: grid;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+        gap: 16px;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        align-items: stretch;
+      }
+
+      .terminal-panel {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: 100%;
+      }
+
+      .terminal-shell {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        overflow: hidden;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--bg-terminal);
+        font-family: "IBM Plex Mono", "Consolas", monospace;
+        font-size: var(--tmux-font-size);
+        line-height: 1.4;
+      }
+
+      .terminal-shell.terminal-focused {
+        border-color: rgba(239, 131, 84, 0.75);
+        box-shadow: 0 0 0 3px rgba(239, 131, 84, 0.16);
+      }
+
+      .terminal-shell .xterm {
+        height: 100%;
+        padding: 16px;
+      }
+
+      .terminal-shell .xterm-viewport {
+        overflow-y: auto !important;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .field-grid .full {
+        grid-column: 1 / -1;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .readonly-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--status-bg);
+        color: var(--muted-strong);
+        white-space: nowrap;
+      }
+
+      .readonly-badge.live {
+        border-color: rgba(74, 222, 128, 0.3);
+        color: var(--ok);
+      }
+
+      .target-card,
+      .status-card {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--bg-panel-2);
+      }
+
+      .target-card {
+        font-family: "IBM Plex Mono", "Consolas", monospace;
+        word-break: break-word;
+      }
+
+      .status-card {
+        margin-top: 12px;
+      }
+
+      .status-card.ok {
+        border-color: rgba(74, 222, 128, 0.3);
+      }
+
+      .status-card.warn {
+        border-color: rgba(245, 158, 11, 0.3);
+      }
+
+      .status-card.error {
+        border-color: rgba(248, 113, 113, 0.3);
+      }
+
+      .compact-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .panel.compact {
+        padding: 12px;
+      }
+
+      .panel.compact .panel-header {
+        margin-bottom: 8px;
+      }
+
+      .panel.compact .panel-title {
+        font-size: 15px;
+      }
+
+      .panel.compact .panel-copy {
+        display: none;
+      }
+
+      .panel.compact select,
+      .panel.compact textarea,
+      .panel.compact input {
+        margin-bottom: 8px;
+      }
+
+      .mini-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .mini-actions > * {
+        flex: 1 1 0;
+      }
+
+      .sidebar-tools {
+        display: flex;
+        gap: 8px;
+      }
+
+      .sidebar-tools > * {
+        flex: 1 1 0;
+      }
+
+      .info-drawer {
+        display: none;
+        margin-top: 10px;
+      }
+
+      .info-drawer.open {
+        display: block;
+      }
+
+      .launch-dialog {
+        width: min(440px, calc(100vw - 24px));
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--bg-panel);
+        color: var(--text);
+        box-shadow: var(--shadow);
+      }
+
+      .launch-dialog::backdrop {
+        background: rgba(8, 12, 18, 0.72);
+        backdrop-filter: blur(4px);
+      }
+
+      .launch-dialog-shell {
+        padding: 18px;
+      }
+
+      .launch-dialog-copy {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+
+      .launch-options {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .launch-option {
+        width: 100%;
+        padding: 14px;
+        text-align: left;
+        color: var(--text);
+        background: var(--bg-panel-2);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+
+      .launch-option.primary {
+        color: #fff;
+        background: var(--accent);
+        border-color: transparent;
+      }
+
+      .launch-option-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .launch-option-copy {
+        display: block;
+        margin-top: 4px;
+        color: inherit;
+        opacity: 0.82;
+      }
+
+      .launch-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 14px;
+      }
+
+      .dialog-field {
+        margin-top: 16px;
+      }
+
+      .dialog-field select,
+      .dialog-field input {
+        margin-bottom: 0;
+      }
+
+      .profile-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .profile-toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .profile-toolbar > * {
+        flex: 1 1 160px;
+      }
+
+      .profile-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .profile-card {
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--bg-panel-2);
+      }
+
+      .profile-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .profile-card-title {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .profile-default {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted-strong);
+      }
+
+      .profile-default input {
+        width: auto;
+        margin: 0;
+      }
+
+      .info-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .info-item {
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--bg-panel-2);
+      }
+
+      .info-item-label {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .info-item-value {
+        margin-top: 4px;
+        color: var(--muted-strong);
+        word-break: break-word;
+      }
+
+      .settings-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+        gap: 16px;
+      }
+
+      .theme-card {
+        display: grid;
+        gap: 10px;
+      }
+
+      .theme-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 1180px) {
+        .summary-grid,
+        .overview-grid,
+        .controls-grid,
+        .workspace,
+        .settings-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .content {
+          overflow: auto;
+        }
+
+        .page.active,
+        .workspace {
+          height: auto;
+        }
+
+        .terminal-shell {
+          min-height: 42vh;
+        }
+      }
+
+      @media (max-width: 860px) {
+        body {
+          overflow: auto;
+        }
+
+        .app-shell,
+        .layout,
+        .content {
+          height: auto;
+          overflow: visible;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .layout.sidebar-collapsed {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .layout.sidebar-collapsed .sidebar {
+          display: none;
+        }
+
+        .summary-grid,
+        .info-grid,
+        .field-grid,
+        .kv-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar {
+          height: auto;
+          padding: 10px 14px;
+          align-items: flex-start;
+        }
+
+        .topbar,
+        .topbar-left,
+        .topbar-right {
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body data-theme="dark">
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button
+            id="toggleSidebarButton"
+            class="icon-button"
+            type="button"
+            aria-label="Collapse navigation sidebar"
+            aria-expanded="true"
+            title="Collapse navigation sidebar"
+          >
+            ≡
+          </button>
+          <div class="brand">
+            <div class="brand-mark"></div>
+            <div class="brand-copy">
+              <div class="brand-title">MUD Agent</div>
+              <div class="brand-subtitle">Control Dashboard</div>
+            </div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="status-cluster">
+            <span id="topStreamStatus" class="status-pill neutral">Stream Idle</span>
+            <span id="topTargetStatus" class="status-pill neutral">No Target</span>
+            <span id="topThemeStatus" class="status-pill neutral">Dark Theme</span>
+            <button id="themeToggleButton" class="icon-button" type="button" aria-label="Toggle theme" title="Toggle theme">
+              ◐
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div id="appLayout" class="layout">
+        <aside class="sidebar">
+          <div class="nav-section">
+            <div class="nav-label">Control</div>
+            <button class="nav-item active" type="button" data-page="controls" title="MUD Monitor">
+              <span class="nav-dot"></span>
+              <span class="nav-text">MUD Monitor</span>
+            </button>
+          </div>
+
+          <div class="nav-section">
+            <div class="nav-label">Settings</div>
+            <button class="nav-item" type="button" data-page="settings" title="Settings">
+              <span class="nav-dot"></span>
+              <span class="nav-text">Settings</span>
+            </button>
+          </div>
+
+          <div class="compact-stack">
+          <div class="panel compact">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Server</div>
+              </div>
+              <button id="infoToggleButton" class="secondary small" type="button">Info</button>
+            </div>
+            <label for="serverSelect">Server</label>
+            <select id="serverSelect"></select>
+            <div class="mini-actions">
+              <button id="sidebarNewServerButton" class="secondary" type="button">New</button>
+              <button id="sidebarEditServerButton" class="secondary" type="button">Edit</button>
+              <button id="sidebarRemoveServerButton" class="danger" type="button">Remove</button>
+            </div>
+            <div id="status" class="status-card muted"></div>
+          </div>
+
+          <div class="panel compact">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Agent Run</div>
+              </div>
+              <span id="agentRunStatus" class="readonly-badge">idle</span>
+            </div>
+            <label for="agentSelect">Agent</label>
+            <select id="agentSelect"></select>
+            <label for="objectiveInput">Objective</label>
+            <textarea
+              id="objectiveInput"
+              rows="4"
+              placeholder="(Optional) Describe the gameplay objective for the agent, for example: finish the beginner tutorial safely, or reach the next town without risky choices."
+            ></textarea>
+            <div class="mini-actions">
+              <button id="startAgentButton" type="button">Start Agent</button>
+              <button id="stopAgentButton" class="danger" type="button">Stop Agent</button>
+            </div>
+          </div>
+
+          <div id="infoDrawer" class="info-drawer">
+            <div class="panel compact">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">Debug / Info</div>
+                </div>
+              </div>
+              <div class="info-list">
+                <div class="info-item">
+                  <div class="info-item-label">Server Details</div>
+                  <div id="serverHint" class="info-item-value">No server selected.</div>
+                </div>
+              </div>
+              <label for="promptInput">Prompt</label>
+              <textarea id="promptInput" placeholder="Suggested prompt loads here. Edit it before starting a run if needed."></textarea>
+              <div class="row">
+                <button id="reloadPromptButton" class="secondary" type="button">Load Prompt</button>
+                <button id="clearPromptButton" class="secondary" type="button">Clear Prompt</button>
+              </div>
+              <div class="sidebar-tools">
+                <button id="testAgentButton" class="secondary" type="button">Test Agent</button>
+              </div>
+            </div>
+          </div>
+          </div>
+        </aside>
+
+        <dialog id="agentLaunchDialog" class="launch-dialog">
+          <form method="dialog" class="launch-dialog-shell">
+            <div class="panel-title">Launch Mode</div>
+            <p class="launch-dialog-copy">
+              Choose how to prepare the selected MUD session before starting the interactive agent.
+            </p>
+            <div class="launch-options">
+              <button id="launchExistingButton" class="launch-option primary" type="button" autofocus>
+                <span class="launch-option-label">AI Agent Will Use Saved Login Profile To Play</span>
+                <span class="launch-option-copy">AI agent will use the selected saved login profile to log in and play.</span>
+              </button>
+              <button id="launchNewUserButton" class="launch-option" type="button">
+                <span class="launch-option-label">AI Agent Will Create A New Character</span>
+                <span class="launch-option-copy">AI agent will create a new character instead of reusing saved credentials.</span>
+              </button>
+            </div>
+            <div class="launch-dialog-actions">
+              <button id="cancelLaunchButton" class="secondary" type="submit">Cancel</button>
+            </div>
+          </form>
+        </dialog>
+
+        <main class="content">
+          <section class="page" data-page="controls">
+            <div class="workspace">
+                <div class="panel terminal-panel">
+                  <div class="panel-header">
+                    <div>
+                      <div class="panel-title">Game Monitor</div>
+                    </div>
+                    <div class="panel-actions">
+                      <button
+                        id="decreaseOutputFontButton"
+                        class="secondary small"
+                        type="button"
+                        aria-label="Decrease TMUX output font size"
+                      >
+                        A-
+                      </button>
+                      <button
+                        id="increaseOutputFontButton"
+                        class="secondary small"
+                        type="button"
+                        aria-label="Increase TMUX output font size"
+                      >
+                        A+
+                      </button>
+                      <span class="readonly-badge">Streamed</span>
+                    </div>
+                  </div>
+                  <div id="outputShell" class="terminal-shell"></div>
+                </div>
+
+                <div class="panel terminal-panel">
+                  <div class="panel-header">
+                    <div>
+                      <div class="panel-title">Agent Monitor</div>
+                    </div>
+                    <span id="agentRunTarget" class="readonly-badge">No active run</span>
+                  </div>
+                  <div id="agentShell" class="terminal-shell"></div>
+                </div>
+            </div>
+          </section>
+
+          <section class="page" data-page="settings">
+            <div class="page-header">
+              <div>
+                <h1 class="page-title">Settings</h1>
+                <div class="page-copy">Custom server definitions, appearance preferences, and local dashboard behavior.</div>
+              </div>
+            </div>
+
+            <div class="settings-stack">
+              <div class="panel">
+                <div class="panel-header">
+                  <div>
+                    <div class="panel-title">Agent Details</div>
+                    <div id="agentProfileCopy" class="panel-copy">Choose the runtime profile for the selected agent.</div>
+                  </div>
+                  <span id="agentSettingsBadge" class="readonly-badge">No Agent</span>
+                </div>
+                <label for="agentProfileSelect">Agent Profile</label>
+                <select id="agentProfileSelect"></select>
+                <div class="info-list">
+                  <div class="info-item">
+                    <div class="info-item-label">Selected Agent</div>
+                    <div id="agentHint" class="info-item-value">No agent definitions loaded.</div>
+                  </div>
+                  <div class="info-item">
+                    <div class="info-item-label">Selected Profile</div>
+                    <div id="agentProfileHint" class="info-item-value">default</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-header">
+                  <div>
+                    <div class="panel-title">Login Profiles</div>
+                    <div id="profilePanelCopy" class="panel-copy">Manage saved usernames and passwords for the selected server.</div>
+                  </div>
+                  <span id="profileServerBadge" class="readonly-badge">No Server</span>
+                </div>
+                <div class="profile-stack">
+                  <div id="profileList" class="profile-list"></div>
+                  <div class="profile-toolbar">
+                    <button id="addProfileButton" class="secondary" type="button">Add Profile</button>
+                    <button id="saveProfilesButton" type="button">Save Profiles</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+              <div class="panel-header">
+                  <div>
+                    <div class="panel-title">Custom Server</div>
+                    <div class="panel-copy">Create or edit alternate hosts and notes. Connection details are managed automatically.</div>
+                  </div>
+                  <span id="customModeBadge" class="readonly-badge">Edit Server</span>
+              </div>
+              <div class="field-grid">
+                  <div>
+                    <label for="formId">ID</label>
+                    <input id="formId" placeholder="my-mud" />
+                  </div>
+                  <div>
+                    <label for="formName">Name</label>
+                    <input id="formName" placeholder="My MUD" />
+                  </div>
+                  <div>
+                    <label for="formHost">Host</label>
+                    <input id="formHost" placeholder="mud.example.com" />
+                  </div>
+                  <div>
+                    <label for="formPort">Port</label>
+                    <input id="formPort" type="number" placeholder="4000" />
+                  </div>
+                  <div class="full">
+                    <label for="formNotes">Notes</label>
+                    <textarea id="formNotes" placeholder="Connection or encoding notes"></textarea>
+                  </div>
+                </div>
+                <div class="row">
+                  <button id="newServerButton" class="secondary" type="button">New</button>
+                  <button id="saveServerButton" type="button">Save Server</button>
+                  <button id="deleteServerButton" class="danger" type="button">Delete Server</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="/vendor/xterm/xterm.js"></script>
+    <script src="/vendor/xterm/addon-fit.js"></script>
+    <script>
+      const body = document.body;
+      const appLayout = document.getElementById("appLayout");
+      const toggleSidebarButton = document.getElementById("toggleSidebarButton");
+      const themeToggleButton = document.getElementById("themeToggleButton");
+      const infoToggleButton = document.getElementById("infoToggleButton");
+      const infoDrawer = document.getElementById("infoDrawer");
+      const topStreamStatus = document.getElementById("topStreamStatus");
+      const topTargetStatus = document.getElementById("topTargetStatus");
+      const topThemeStatus = document.getElementById("topThemeStatus");
+      const navButtons = Array.from(document.querySelectorAll(".nav-item"));
+      const pages = Array.from(document.querySelectorAll(".page"));
+
+      const serverSelect = document.getElementById("serverSelect");
+      const outputShell = document.getElementById("outputShell");
+      const decreaseOutputFontButton = document.getElementById("decreaseOutputFontButton");
+      const increaseOutputFontButton = document.getElementById("increaseOutputFontButton");
+      const agentShell = document.getElementById("agentShell");
+      const status = document.getElementById("status");
+      const serverHint = document.getElementById("serverHint");
+      const customModeBadge = document.getElementById("customModeBadge");
+      const sidebarNewServerButton = document.getElementById("sidebarNewServerButton");
+      const sidebarEditServerButton = document.getElementById("sidebarEditServerButton");
+      const sidebarRemoveServerButton = document.getElementById("sidebarRemoveServerButton");
+      const agentSelect = document.getElementById("agentSelect");
+      const agentProfileSelect = document.getElementById("agentProfileSelect");
+      const agentProfileCopy = document.getElementById("agentProfileCopy");
+      const agentHint = document.getElementById("agentHint");
+      const agentProfileHint = document.getElementById("agentProfileHint");
+      const agentSettingsBadge = document.getElementById("agentSettingsBadge");
+      const agentRunStatus = document.getElementById("agentRunStatus");
+      const agentRunTarget = document.getElementById("agentRunTarget");
+      const testAgentButton = document.getElementById("testAgentButton");
+      const startAgentButton = document.getElementById("startAgentButton");
+      const stopAgentButton = document.getElementById("stopAgentButton");
+      const objectiveInput = document.getElementById("objectiveInput");
+      const promptInput = document.getElementById("promptInput");
+      const reloadPromptButton = document.getElementById("reloadPromptButton");
+      const clearPromptButton = document.getElementById("clearPromptButton");
+      const agentLaunchDialog = document.getElementById("agentLaunchDialog");
+      const launchExistingButton = document.getElementById("launchExistingButton");
+      const launchNewUserButton = document.getElementById("launchNewUserButton");
+      const cancelLaunchButton = document.getElementById("cancelLaunchButton");
+      const profileList = document.getElementById("profileList");
+      const profileServerBadge = document.getElementById("profileServerBadge");
+      const profilePanelCopy = document.getElementById("profilePanelCopy");
+      const addProfileButton = document.getElementById("addProfileButton");
+      const saveProfilesButton = document.getElementById("saveProfilesButton");
+
+      const formId = document.getElementById("formId");
+      const formName = document.getElementById("formName");
+      const formHost = document.getElementById("formHost");
+      const formPort = document.getElementById("formPort");
+      const formNotes = document.getElementById("formNotes");
+      const newServerButton = document.getElementById("newServerButton");
+      const saveServerButton = document.getElementById("saveServerButton");
+      const deleteServerButton = document.getElementById("deleteServerButton");
+
+      let servers = [];
+      let agents = [];
+      let currentTarget = "";
+      let currentInteractiveAgentId = "";
+      let currentInteractiveAgentTarget = "";
+      let lastSuggestedPrompt = "";
+      let interactiveAgentSessions = [];
+      let agentRuntimeProfiles = [];
+      let defaultAgentRuntimeProfileId = "default";
+      let currentAgentRuntimeProfileId = "default";
+      let loginProfiles = [];
+      let defaultLoginProfileId = "";
+      let currentLaunchMode = "existing-login";
+      let currentLoginProfileId = "";
+      let isSidebarCollapsed = false;
+      let outputFontSize = 14;
+      let currentPage = "controls";
+      let currentTheme = "dark";
+      const sidebarStorageKey = "mud-agent.sidebar-collapsed";
+      const outputFontStorageKey = "mud-agent.tmux-output-font-size";
+      const themeStorageKey = "mud-agent.theme";
+      const pageStorageKey = "mud-agent.page";
+      const selectedServerStorageKey = "mud-agent.selected-server";
+      const selectedAgentStorageKey = "mud-agent.selected-agent";
+      const selectedAgentProfilesStorageKey = "mud-agent.selected-agent-profiles";
+      const preferredServerId = "aardwolf";
+      const minOutputFontSize = 12;
+      const maxOutputFontSize = 22;
+      const terminalReconnectDelayMs = 1200;
+
+      function readStoredValue(key) {
+        try {
+          return window.localStorage.getItem(key);
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      function writeStoredValue(key, value) {
+        try {
+          window.localStorage.setItem(key, value);
+        } catch (_error) {
+          // Ignore storage write failures and keep in-memory state active.
+        }
+      }
+
+      function readStoredObject(key, fallback = {}) {
+        const value = readStoredValue(key);
+        if (!value) {
+          return fallback;
+        }
+        try {
+          const parsed = JSON.parse(value);
+          return parsed && typeof parsed === "object" ? parsed : fallback;
+        } catch (_error) {
+          return fallback;
+        }
+      }
+
+      function readStoredBoolean(key, fallback) {
+        const value = readStoredValue(key);
+        if (value === null) {
+          return fallback;
+        }
+        return value === "true";
+      }
+
+      function readStoredNumber(key, fallback) {
+        const value = Number(readStoredValue(key));
+        return Number.isFinite(value) ? value : fallback;
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function defaultWindowNameForServerId(serverId) {
+        return (
+          String(serverId || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]+/g, "_")
+            .replace(/^_+|_+$/g, "") || "mud"
+        );
+      }
+
+      function defaultLauncherCommandForServer(host, port) {
+        const normalizedHost = String(host || "").trim();
+        const normalizedPort = String(port || "").trim();
+        return normalizedHost && normalizedPort ? `telnet ${normalizedHost} ${normalizedPort}` : "";
+      }
+
+      function applySidebarState() {
+        appLayout.classList.toggle("sidebar-collapsed", isSidebarCollapsed);
+        toggleSidebarButton.setAttribute("aria-expanded", String(!isSidebarCollapsed));
+        toggleSidebarButton.setAttribute(
+          "aria-label",
+          isSidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"
+        );
+        toggleSidebarButton.title = isSidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar";
+      }
+
+      function setSidebarCollapsed(collapsed) {
+        isSidebarCollapsed = Boolean(collapsed);
+        writeStoredValue(sidebarStorageKey, String(isSidebarCollapsed));
+        applySidebarState();
+      }
+
+      function applyTheme() {
+        body.dataset.theme = currentTheme;
+        document.documentElement.style.colorScheme = currentTheme === "light" ? "light" : "dark";
+        const themeLabel = currentTheme === "light" ? "Light" : "Dark";
+        topThemeStatus.textContent = `${themeLabel} Theme`;
+        topThemeStatus.className = "status-pill neutral";
+        outputTerminal.refreshTheme();
+        agentTerminal.refreshTheme();
+      }
+
+      function setTheme(theme) {
+        currentTheme = theme === "light" ? "light" : "dark";
+        writeStoredValue(themeStorageKey, currentTheme);
+        applyTheme();
+      }
+
+      function toggleTheme() {
+        setTheme(currentTheme === "dark" ? "light" : "dark");
+      }
+
+      function setInfoDrawerOpen(open) {
+        const expanded = Boolean(open);
+        infoDrawer.classList.toggle("open", expanded);
+        infoToggleButton.setAttribute("aria-expanded", String(expanded));
+        infoToggleButton.textContent = expanded ? "Hide" : "Info";
+      }
+
+      function setActivePage(page) {
+        currentPage = page;
+        writeStoredValue(pageStorageKey, currentPage);
+        navButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.page === currentPage);
+        });
+        pages.forEach((section) => {
+          section.classList.toggle("active", section.dataset.page === currentPage);
+        });
+      }
+
+      function applyOutputFontSize() {
+        outputShell.style.setProperty("--tmux-font-size", `${outputFontSize}px`);
+        decreaseOutputFontButton.disabled = outputFontSize <= minOutputFontSize;
+        increaseOutputFontButton.disabled = outputFontSize >= maxOutputFontSize;
+        outputTerminal.setFontSize(outputFontSize);
+        agentTerminal.setFontSize(outputFontSize);
+      }
+
+      function setOutputFontSize(size) {
+        outputFontSize = clamp(size, minOutputFontSize, maxOutputFontSize);
+        writeStoredValue(outputFontStorageKey, String(outputFontSize));
+        applyOutputFontSize();
+      }
+
+      function cssVar(name) {
+        return getComputedStyle(body).getPropertyValue(name).trim();
+      }
+
+      function buildTerminalTheme() {
+        return {
+          background: cssVar("--bg-terminal"),
+          foreground: cssVar("--text"),
+          cursor: cssVar("--accent"),
+          cursorAccent: cssVar("--bg-terminal"),
+          selectionBackground: "rgba(239, 131, 84, 0.22)",
+          black: cssVar("--ansi-black"),
+          red: cssVar("--ansi-red"),
+          green: cssVar("--ansi-green"),
+          yellow: cssVar("--ansi-yellow"),
+          blue: cssVar("--ansi-blue"),
+          magenta: cssVar("--ansi-magenta"),
+          cyan: cssVar("--ansi-cyan"),
+          white: cssVar("--ansi-white"),
+          brightBlack: cssVar("--ansi-bright-black"),
+          brightRed: cssVar("--ansi-bright-red"),
+          brightGreen: cssVar("--ansi-bright-green"),
+          brightYellow: cssVar("--ansi-bright-yellow"),
+          brightBlue: cssVar("--ansi-bright-blue"),
+          brightMagenta: cssVar("--ansi-bright-magenta"),
+          brightCyan: cssVar("--ansi-bright-cyan"),
+          brightWhite: cssVar("--ansi-bright-white")
+        };
+      }
+
+      function normalizeTerminalSnapshot(text) {
+        return String(text || "").replace(/\r/g, "");
+      }
+
+      function createTerminalController({ shell, emptyMessage, onConnectionChange, onStatus }) {
+        const terminal = new Terminal({
+          allowTransparency: true,
+          convertEol: true,
+          cursorBlink: false,
+          cursorStyle: "block",
+          disableStdin: true,
+          fontFamily: '"IBM Plex Mono", "Consolas", monospace',
+          fontSize: outputFontSize,
+          scrollback: 1000,
+          theme: buildTerminalTheme()
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        terminal.loadAddon(fitAddon);
+        terminal.open(shell);
+
+        let desiredConnection = null;
+        let socket = null;
+        let reconnectTimer = 0;
+        let pendingMessages = [];
+        let pendingSnapshot = null;
+        let writingSnapshot = false;
+        let lastRenderedSnapshot = "";
+        let lastPlaceholderMessage = null;
+        let hasContent = false;
+        let lastReportedSize = "";
+        let live = false;
+
+        const sameConnection = (left, right) =>
+          Boolean(left) &&
+          Boolean(right) &&
+          left.target === right.target &&
+          (left.serverId || "") === (right.serverId || "") &&
+          (left.encoding || "") === (right.encoding || "");
+
+        const queueFit = () => {
+          window.requestAnimationFrame(() => {
+            fitAddon.fit();
+            reportResize();
+          });
+        };
+
+        const setLive = (nextLive) => {
+          if (live === nextLive) {
+            return;
+          }
+          live = nextLive;
+          onConnectionChange();
+        };
+
+        const setPlaceholder = (message) => {
+          const nextMessage = String(message || emptyMessage);
+          if (!hasContent && lastRenderedSnapshot === "" && lastPlaceholderMessage === nextMessage) {
+            return;
+          }
+          pendingSnapshot = null;
+          writingSnapshot = false;
+          lastRenderedSnapshot = "";
+          lastPlaceholderMessage = nextMessage;
+          hasContent = false;
+          terminal.reset();
+          terminal.write(`${nextMessage}\r\n`);
+          terminal.scrollToTop();
+        };
+
+        const flushSnapshot = () => {
+          if (writingSnapshot || pendingSnapshot === null) {
+            return;
+          }
+
+          const snapshot = pendingSnapshot;
+          pendingSnapshot = null;
+
+          if (snapshot === lastRenderedSnapshot) {
+            return;
+          }
+
+          writingSnapshot = true;
+          lastRenderedSnapshot = snapshot;
+          lastPlaceholderMessage = null;
+
+          // Overwrite in-place: cursor home → content → clear remaining lines.
+          // This avoids terminal.reset() which blanks the screen and causes flicker.
+          const payload = hasContent
+            ? `\x1b[H${snapshot}\x1b[0J`
+            : snapshot;
+          hasContent = true;
+
+          terminal.write(payload, () => {
+            terminal.scrollToBottom();
+            writingSnapshot = false;
+            if (pendingSnapshot !== null) {
+              flushSnapshot();
+            }
+          });
+        };
+
+        const renderSnapshot = (output) => {
+          pendingSnapshot = normalizeTerminalSnapshot(output);
+          flushSnapshot();
+        };
+
+        const clearReconnectTimer = () => {
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = 0;
+          }
+        };
+
+        const disconnect = ({ preserveIntent = false } = {}) => {
+          clearReconnectTimer();
+          if (!preserveIntent) {
+            desiredConnection = null;
+          }
+          lastReportedSize = "";
+          lastRenderedSnapshot = "";
+          hasContent = false;
+          pendingMessages = [];
+          if (socket) {
+            const socketToClose = socket;
+            socket = null;
+            socketToClose.close();
+          }
+          shell.classList.remove("terminal-focused");
+          setLive(false);
+        };
+
+        const scheduleReconnect = () => {
+          if (!desiredConnection || reconnectTimer) {
+            return;
+          }
+          reconnectTimer = window.setTimeout(() => {
+            reconnectTimer = 0;
+            connect(desiredConnection);
+          }, terminalReconnectDelayMs);
+        };
+
+        const sendMessage = (payload) => {
+          const message = JSON.stringify(payload);
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(message);
+            return;
+          }
+          pendingMessages.push(message);
+        };
+
+        const flushPendingMessages = () => {
+          if (!socket || socket.readyState !== WebSocket.OPEN || pendingMessages.length === 0) {
+            return;
+          }
+          for (const message of pendingMessages) {
+            socket.send(message);
+          }
+          pendingMessages = [];
+        };
+
+        const reportResize = () => {
+          const nextSize = `${terminal.cols}x${terminal.rows}`;
+          if (!desiredConnection || !terminal.cols || !terminal.rows || nextSize === lastReportedSize) {
+            return;
+          }
+          lastReportedSize = nextSize;
+          sendMessage({
+            type: "resize",
+            cols: terminal.cols,
+            rows: terminal.rows
+          });
+        };
+
+        const connect = (config) => {
+          if (sameConnection(desiredConnection, config) && socket && socket.readyState <= WebSocket.OPEN) {
+            queueFit();
+            return;
+          }
+
+          desiredConnection = { ...config };
+          lastReportedSize = "";
+          clearReconnectTimer();
+          if (socket) {
+            const currentSocket = socket;
+            socket = null;
+            currentSocket.close();
+          }
+
+          const params = new URLSearchParams({
+            target: config.target,
+            intervalMs: "100",
+            lines: "220"
+          });
+          if (config.serverId) {
+            params.set("serverId", config.serverId);
+          }
+          if (config.encoding) {
+            params.set("encoding", config.encoding);
+          }
+
+          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+          socket = new WebSocket(`${protocol}//${window.location.host}/ws/terminal?${params.toString()}`);
+          const activeSocket = socket;
+
+          activeSocket.addEventListener("open", () => {
+            if (socket !== activeSocket) {
+              return;
+            }
+            setLive(true);
+            flushPendingMessages();
+            queueFit();
+            sendMessage({ type: "refresh" });
+          });
+
+          activeSocket.addEventListener("message", (event) => {
+            if (socket !== activeSocket) {
+              return;
+            }
+            const message = JSON.parse(event.data);
+            if (message.type === "snapshot") {
+              renderSnapshot(message.output);
+              return;
+            }
+            if (message.type === "ready") {
+              queueFit();
+              return;
+            }
+            if (message.type === "error") {
+              onStatus(`${message.code}: ${message.error}`, "error");
+            }
+          });
+
+          activeSocket.addEventListener("close", () => {
+            if (socket !== activeSocket) {
+              return;
+            }
+            socket = null;
+            setLive(false);
+            if (desiredConnection) {
+              onStatus("TERMINAL_DISCONNECTED: retrying terminal stream", "warn");
+              scheduleReconnect();
+            }
+          });
+
+          activeSocket.addEventListener("error", () => {
+            if (socket === activeSocket) {
+              socket.close();
+            }
+          });
+        };
+
+        const resizeObserver = new ResizeObserver(() => {
+          queueFit();
+        });
+        resizeObserver.observe(shell);
+
+        const textarea = terminal.textarea;
+        if (textarea) {
+          textarea.addEventListener("focus", () => {
+            shell.classList.add("terminal-focused");
+          });
+
+          textarea.addEventListener("blur", () => {
+            shell.classList.remove("terminal-focused");
+          });
+        }
+
+        terminal.onData((data) => {
+          if (!desiredConnection) {
+            return;
+          }
+          sendMessage({
+            type: "data",
+            data
+          });
+        });
+
+        terminal.onResize(() => {
+          reportResize();
+        });
+
+        queueFit();
+        setPlaceholder(emptyMessage);
+
+        return {
+          connect,
+          disconnect,
+          focus() {
+            terminal.focus();
+          },
+          isLive() {
+            return live;
+          },
+          refreshTheme() {
+            terminal.options.theme = buildTerminalTheme();
+            terminal.refresh(0, Math.max(terminal.rows - 1, 0));
+          },
+          setFontSize(size) {
+            terminal.options.fontSize = size;
+            queueFit();
+          },
+          setInputEnabled(enabled) {
+            terminal.options.disableStdin = !enabled;
+            terminal.options.cursorBlink = Boolean(enabled);
+          },
+          setPlaceholder,
+          renderSnapshot
+        };
+      }
+
+      async function api(path, options = {}) {
+        const method = options.method || "GET";
+        const headers = new Headers(options.headers || {});
+        if (method !== "GET" && method !== "HEAD" && !headers.has("Content-Type")) {
+          headers.set("Content-Type", "application/json");
+        }
+
+        const response = await fetch(path, {
+          ...options,
+          method,
+          headers
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const error = new Error(data.error || "Request failed");
+          error.code = data.code || "REQUEST_FAILED";
+          error.details = data.details;
+          throw error;
+        }
+        return data;
+      }
+
+      const outputTerminal = createTerminalController({
+        shell: outputShell,
+        emptyMessage: "Start a session to view tmux output.",
+        onConnectionChange: refreshDashboardSummary,
+        onStatus: setStatusMessage
+      });
+      const agentTerminal = createTerminalController({
+        shell: agentShell,
+        emptyMessage: "Agent terminal is idle.",
+        onConnectionChange: refreshDashboardSummary,
+        onStatus: setStatusMessage
+      });
+
+      function selectedServer() {
+        return servers.find((server) => server.id === serverSelect.value);
+      }
+
+      function selectedAgent() {
+        return agents.find((agent) => agent.id === agentSelect.value);
+      }
+
+      function selectedInteractiveAgentSession() {
+        const agent = selectedAgent();
+        return interactiveAgentSessions.find((session) => session.agentId === agent?.id) || null;
+      }
+
+      function defaultTargetForServer(server) {
+        if (!server || !server.windowName) {
+          return "";
+        }
+
+        return `${server.tmuxSession || "0"}:${server.windowName}`;
+      }
+
+      function targetBelongsToServer(target, server) {
+        if (!target || !server) {
+          return false;
+        }
+
+        const targetWindow = target.includes(":") ? target.split(":").slice(1).join(":") : target;
+        const names = new Set([server.windowName, ...(server.windowNames || [])].filter(Boolean));
+        return names.has(targetWindow);
+      }
+
+      function resetAgentOutput(message = "Agent terminal is idle.") {
+        agentTerminal.setPlaceholder(message);
+      }
+
+      function reconnectTerminalStreams() {
+        const server = selectedServer();
+
+        if (currentTarget) {
+          outputTerminal.connect({
+            target: currentTarget,
+            serverId: server?.id || "",
+            encoding: server?.encoding || "UTF-8"
+          });
+        } else {
+          outputTerminal.disconnect();
+          outputTerminal.setPlaceholder("Start a session to view tmux output.");
+        }
+
+        if (currentInteractiveAgentTarget) {
+          agentTerminal.connect({
+            target: currentInteractiveAgentTarget,
+            encoding: "UTF-8"
+          });
+        } else {
+          agentTerminal.disconnect();
+          agentTerminal.setPlaceholder("Agent terminal is idle.");
+        }
+
+        outputTerminal.setInputEnabled(Boolean(currentTarget));
+        agentTerminal.setInputEnabled(Boolean(currentInteractiveAgentTarget));
+        refreshDashboardSummary();
+      }
+
+      function applyStatusTone(tone) {
+        status.className = `status-card ${tone || "neutral"}`;
+      }
+
+      function setStatusMessage(message, tone = "neutral") {
+        status.textContent = message || "";
+        applyStatusTone(tone);
+      }
+
+      function setStatusFromError(error) {
+        setStatusMessage(`${error.code || "ERROR"}: ${error.message}`, "error");
+        refreshDashboardSummary();
+      }
+
+      function refreshDashboardSummary() {
+        const server = selectedServer();
+        const defaultTarget = defaultTargetForServer(server);
+        const liveTarget = currentTarget || currentInteractiveAgentTarget || "";
+        const liveStream = outputTerminal.isLive() || agentTerminal.isLive();
+
+        topStreamStatus.textContent = liveStream ? "Stream Live" : "Stream Idle";
+        topStreamStatus.className = `status-pill ${liveStream ? "ok" : "neutral"}`;
+        topTargetStatus.textContent = liveTarget || defaultTarget || "No Target";
+        topTargetStatus.className = `status-pill ${liveTarget ? "ok" : defaultTarget ? "warn" : "neutral"}`;
+
+        if (!server) {
+          serverHint.textContent = "";
+        }
+
+        if (!status.textContent && !liveTarget) {
+          applyStatusTone("neutral");
+        }
+      }
+
+      function updateAgentRunUi() {
+        if (currentInteractiveAgentTarget) {
+          agentRunStatus.textContent = "interactive";
+          agentRunStatus.classList.add("live");
+          agentRunTarget.textContent = `${currentInteractiveAgentId} @ ${currentInteractiveAgentTarget}`;
+          stopAgentButton.disabled = false;
+        } else {
+          agentRunStatus.textContent = "idle";
+          agentRunStatus.classList.remove("live");
+          agentRunTarget.textContent = "No active run";
+          stopAgentButton.disabled = true;
+        }
+
+        refreshDashboardSummary();
+      }
+
+      function updateInteractiveAgentUi(session) {
+        currentInteractiveAgentId = session?.agentId || "";
+        currentInteractiveAgentTarget = session?.target || "";
+        updateAgentRunUi();
+      }
+
+      function setPromptValue(value) {
+        promptInput.value = value;
+        lastSuggestedPrompt = value;
+      }
+
+      function promptMatchesSuggested() {
+        return !promptInput.value.trim() || promptInput.value === lastSuggestedPrompt;
+      }
+
+      function createProfileDraft(profile = {}) {
+        return {
+          id: profile.id || `profile-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          label: profile.label || "",
+          username: profile.username || "",
+          password: profile.password || "",
+          confirmExistingLogin: profile.confirmExistingLogin || "",
+          isDefault: Boolean(profile.isDefault)
+        };
+      }
+
+      function selectedAgentRuntimeProfile() {
+        return (
+          agentRuntimeProfiles.find((profile) => profile.id === currentAgentRuntimeProfileId) ||
+          agentRuntimeProfiles.find((profile) => profile.id === defaultAgentRuntimeProfileId) ||
+          agentRuntimeProfiles[0] ||
+          null
+        );
+      }
+
+      function resolveCurrentAgentRuntimeProfileId() {
+        if (currentAgentRuntimeProfileId && agentRuntimeProfiles.some((profile) => profile.id === currentAgentRuntimeProfileId)) {
+          return currentAgentRuntimeProfileId;
+        }
+        if (defaultAgentRuntimeProfileId && agentRuntimeProfiles.some((profile) => profile.id === defaultAgentRuntimeProfileId)) {
+          return defaultAgentRuntimeProfileId;
+        }
+        return agentRuntimeProfiles[0]?.id || "default";
+      }
+
+      function normalizeOpenClawSessionKeyForAgent(sessionKey, agentId) {
+        const resolvedAgentId = String(agentId || "").trim() || "main";
+        const normalizedSessionKey = String(sessionKey || "").trim();
+        if (!normalizedSessionKey) {
+          return `agent:${resolvedAgentId}:main`;
+        }
+        if (normalizedSessionKey === "global" || normalizedSessionKey === "unknown") {
+          return normalizedSessionKey;
+        }
+        if (normalizedSessionKey.startsWith("agent:")) {
+          const parts = normalizedSessionKey.split(":");
+          const suffix = parts.slice(2).join(":").trim() || "main";
+          return `agent:${resolvedAgentId}:${suffix}`;
+        }
+        return `agent:${resolvedAgentId}:${normalizedSessionKey}`;
+      }
+
+      function buildAgentCommandPreview(agent, profileId = currentAgentRuntimeProfileId) {
+        if (!agent) {
+          return "No agent definitions loaded.";
+        }
+
+        const applyProfile = (command, rawArgs) => {
+          const args = Array.isArray(rawArgs) ? [...rawArgs] : [];
+          if (command === "openclaw") {
+            const subcommand = args[0] || "";
+            if (subcommand === "tui") {
+              let sessionKey = "main";
+              const normalizedArgs = [];
+              for (let index = 0; index < args.length; index += 1) {
+                const value = args[index];
+                if (value === "--session") {
+                  sessionKey = index + 1 < args.length ? String(args[index + 1] || "") : sessionKey;
+                  index += 1;
+                  continue;
+                }
+                if (value.startsWith("--session=")) {
+                  sessionKey = value.slice("--session=".length) || sessionKey;
+                  continue;
+                }
+                normalizedArgs.push(value);
+              }
+              normalizedArgs.splice(1, 0, "--session", normalizeOpenClawSessionKeyForAgent(sessionKey, profileId));
+              return `${command} ${normalizedArgs.join(" ")}`.trim();
+            }
+
+            if (subcommand === "agent" || subcommand === "sessions") {
+              const normalizedArgs = [];
+              for (let index = 0; index < args.length; index += 1) {
+                const value = args[index];
+                if (value === "--agent") {
+                  index += 1;
+                  continue;
+                }
+                if (value.startsWith("--agent=")) {
+                  continue;
+                }
+                normalizedArgs.push(value);
+              }
+              normalizedArgs.splice(1, 0, "--agent", String(profileId || defaultAgentRuntimeProfileId || "main"));
+              return `${command} ${normalizedArgs.join(" ")}`.trim();
+            }
+
+            return `${command} ${args.join(" ")}`.trim();
+          }
+
+          const profileFlag = command === "codex" ? "--profile" : "";
+          const normalizedArgs = [];
+          for (let index = 0; index < args.length; index += 1) {
+            const value = args[index];
+            if (value === "--profile" || value === "-p" || value.startsWith("--profile=") || value.startsWith("-p=")) {
+              if (value === "--profile" || value === "-p") {
+                index += 1;
+              }
+              continue;
+            }
+            normalizedArgs.push(value);
+          }
+          if (profileFlag && profileId && profileId !== "default") {
+            normalizedArgs.unshift(profileId);
+            normalizedArgs.unshift(profileFlag);
+          }
+          return `${command} ${normalizedArgs.join(" ")}`.trim();
+        };
+
+        const details = [];
+        details.push(applyProfile(agent.command, agent.args));
+        if (agent.interactiveTmux) {
+          const interactiveCommand = agent.interactiveCommand || agent.command;
+          const interactiveArgs = Array.isArray(agent.interactiveArgs) && agent.interactiveArgs.length > 0
+            ? agent.interactiveArgs
+            : agent.args;
+          const interactivePreview = applyProfile(interactiveCommand, interactiveArgs);
+          if (interactivePreview !== details[0]) {
+            details.push(`interactive ${interactivePreview}`);
+          }
+        }
+        if (agent.notes) {
+          details.push(agent.notes);
+        }
+        return details.join(" / ");
+      }
+
+      function syncAgentRuntimeProfileSelect() {
+        const agent = selectedAgent();
+        const storedProfilesByAgent = readStoredObject(selectedAgentProfilesStorageKey, {});
+        if (agent && !currentAgentRuntimeProfileId && storedProfilesByAgent[agent.id]) {
+          currentAgentRuntimeProfileId = storedProfilesByAgent[agent.id];
+        }
+
+        agentProfileSelect.innerHTML = "";
+        const resolvedProfileId = resolveCurrentAgentRuntimeProfileId();
+        currentAgentRuntimeProfileId = resolvedProfileId;
+
+        for (const profile of agentRuntimeProfiles) {
+          const option = document.createElement("option");
+          option.value = profile.id;
+          option.textContent = profile.label || profile.id;
+          agentProfileSelect.appendChild(option);
+        }
+
+        if (agentRuntimeProfiles.length === 0) {
+          const option = document.createElement("option");
+          option.value = "default";
+          option.textContent = "default";
+          agentProfileSelect.appendChild(option);
+        }
+
+        agentProfileSelect.value = resolvedProfileId;
+        agentProfileSelect.disabled = !agent;
+
+        const selectedProfile = selectedAgentRuntimeProfile();
+        agentProfileCopy.textContent = selectedProfile?.description || "Choose the runtime profile for the selected agent.";
+        agentProfileHint.textContent = selectedProfile
+          ? `${selectedProfile.label || selectedProfile.id}${selectedProfile.source ? ` / ${selectedProfile.source}` : ""}`
+          : "default";
+      }
+
+      function renderLoginProfiles() {
+        const server = selectedServer();
+        profileServerBadge.textContent = server ? server.name : "No Server";
+        profilePanelCopy.textContent = server
+          ? `Manage saved usernames and passwords for ${server.name}.`
+          : "Select a server to manage login profiles.";
+        addProfileButton.disabled = !server;
+        saveProfilesButton.disabled = !server;
+        profileList.innerHTML = "";
+
+        if (!server) {
+          const empty = document.createElement("div");
+          empty.className = "info-item";
+          empty.textContent = "No server selected.";
+          profileList.appendChild(empty);
+          return;
+        }
+
+        if (loginProfiles.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "info-item";
+          empty.textContent = "No saved profiles yet. Add one below.";
+          profileList.appendChild(empty);
+          return;
+        }
+
+        for (const profile of loginProfiles) {
+          const card = document.createElement("div");
+          card.className = "profile-card";
+          card.dataset.profileId = profile.id;
+
+          const header = document.createElement("div");
+          header.className = "profile-card-header";
+
+          const title = document.createElement("div");
+          title.className = "profile-card-title";
+          title.textContent = profile.label || "Profile";
+
+          const actions = document.createElement("div");
+          actions.className = "panel-actions";
+
+          const defaultLabel = document.createElement("label");
+          defaultLabel.className = "profile-default";
+          const defaultInput = document.createElement("input");
+          defaultInput.type = "radio";
+          defaultInput.name = "defaultProfileChoice";
+          defaultInput.value = profile.id;
+          defaultInput.checked = profile.isDefault;
+          const defaultText = document.createElement("span");
+          defaultText.textContent = "Default";
+          defaultLabel.append(defaultInput, defaultText);
+
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "secondary small";
+          removeButton.textContent = "Remove";
+          removeButton.addEventListener("click", () => {
+            loginProfiles = loginProfiles.filter((entry) => entry.id !== profile.id);
+            if (defaultLoginProfileId === profile.id) {
+              defaultLoginProfileId = loginProfiles[0]?.id || "";
+              loginProfiles = loginProfiles.map((entry, index) => ({
+                ...entry,
+                isDefault: index === 0
+              }));
+            }
+            renderLoginProfiles();
+          });
+
+          actions.append(defaultLabel, removeButton);
+          header.append(title, actions);
+
+          const grid = document.createElement("div");
+          grid.className = "field-grid";
+
+          const labelWrap = document.createElement("div");
+          const labelLabel = document.createElement("label");
+          labelLabel.textContent = "Profile Name";
+          const labelInput = document.createElement("input");
+          labelInput.value = profile.label;
+          labelInput.placeholder = "Default";
+          labelInput.dataset.field = "label";
+          labelWrap.append(labelLabel, labelInput);
+
+          const usernameWrap = document.createElement("div");
+          const usernameLabel = document.createElement("label");
+          usernameLabel.textContent = "Username";
+          const usernameInput = document.createElement("input");
+          usernameInput.value = profile.username;
+          usernameInput.placeholder = "username";
+          usernameInput.dataset.field = "username";
+          usernameWrap.append(usernameLabel, usernameInput);
+
+          const passwordWrap = document.createElement("div");
+          passwordWrap.className = "full";
+          const passwordLabel = document.createElement("label");
+          passwordLabel.textContent = "Password";
+          const passwordInput = document.createElement("input");
+          passwordInput.type = "password";
+          passwordInput.value = profile.password;
+          passwordInput.placeholder = "password";
+          passwordInput.dataset.field = "password";
+          passwordWrap.append(passwordLabel, passwordInput);
+
+          grid.append(labelWrap, usernameWrap, passwordWrap);
+          card.append(header, grid);
+          profileList.appendChild(card);
+        }
+      }
+
+      function collectProfileDrafts() {
+        const defaultChoice = document.querySelector('input[name="defaultProfileChoice"]:checked')?.value || "";
+        const drafts = Array.from(profileList.querySelectorAll(".profile-card")).map((card) => {
+          const getValue = (field) => card.querySelector(`[data-field="${field}"]`)?.value.trim() || "";
+          const existingProfile = loginProfiles.find((profile) => profile.id === card.dataset.profileId) || {};
+          return createProfileDraft({
+            ...existingProfile,
+            id: card.dataset.profileId,
+            label: getValue("label"),
+            username: getValue("username"),
+            password: card.querySelector('[data-field="password"]')?.value || "",
+            isDefault: card.dataset.profileId === defaultChoice
+          });
+        });
+
+        return {
+          defaultProfileId: defaultChoice || drafts[0]?.id || "",
+          profiles: drafts
+        };
+      }
+
+      async function loadLoginProfiles() {
+        const server = selectedServer();
+        if (!server) {
+          loginProfiles = [];
+          defaultLoginProfileId = "";
+          currentLoginProfileId = "";
+          renderLoginProfiles();
+          return;
+        }
+
+        const data = await api(`/api/servers/${encodeURIComponent(server.id)}/login-profiles`);
+        loginProfiles = (data.profiles || []).map((profile) => createProfileDraft(profile));
+        defaultLoginProfileId = data.defaultProfileId || loginProfiles[0]?.id || "";
+        currentLoginProfileId =
+          currentLoginProfileId && loginProfiles.some((profile) => profile.id === currentLoginProfileId)
+            ? currentLoginProfileId
+            : defaultLoginProfileId;
+        renderLoginProfiles();
+      }
+
+      async function saveLoginProfiles() {
+        const server = selectedServer();
+        if (!server) {
+          return;
+        }
+
+        const payload = collectProfileDrafts();
+        if (payload.profiles.some((profile) => !profile.label || !profile.username || !profile.password)) {
+          const error = new Error("Each profile requires a name, username, and password.");
+          error.code = "INVALID_LOGIN_PROFILE";
+          throw error;
+        }
+
+        const data = await api(`/api/servers/${encodeURIComponent(server.id)}/login-profiles`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        loginProfiles = (data.profiles || []).map((profile) => createProfileDraft(profile));
+        defaultLoginProfileId = data.defaultProfileId || loginProfiles[0]?.id || "";
+        currentLoginProfileId = defaultLoginProfileId;
+        renderLoginProfiles();
+        setStatusMessage(`Saved ${loginProfiles.length} login profile${loginProfiles.length === 1 ? "" : "s"} for ${server.id}.`, "ok");
+      }
+
+      async function loadPromptPreview({
+        force = false,
+        launchMode = currentLaunchMode,
+        profileId = currentLoginProfileId
+      } = {}) {
+        const agent = selectedAgent();
+        const server = selectedServer();
+        if (!agent || !server) {
+          if (force || !promptInput.value.trim()) {
+            setPromptValue("");
+          }
+          reloadPromptButton.disabled = true;
+          clearPromptButton.disabled = false;
+          return;
+        }
+
+        reloadPromptButton.disabled = false;
+        clearPromptButton.disabled = false;
+
+        if (!force && !promptMatchesSuggested()) {
+          return;
+        }
+
+        const params = new URLSearchParams({
+          serverId: server.id
+        });
+        const target = targetBelongsToServer(currentTarget, server) ? currentTarget : defaultTargetForServer(server);
+        if (target) {
+          params.set("target", target);
+        }
+        params.set("launchMode", launchMode || "existing-login");
+        if (profileId) {
+          params.set("profileId", profileId);
+        }
+        if (objectiveInput.value.trim()) {
+          params.set("objective", objectiveInput.value.trim());
+        }
+
+        const data = await api(`/api/agents/${encodeURIComponent(agent.id)}/prompt-preview?${params.toString()}`);
+        setPromptValue(data.prompt || "");
+        currentLaunchMode = data.launchMode || launchMode || "existing-login";
+        currentLoginProfileId = data.profileId || profileId || "";
+      }
+
+      async function loadInteractiveAgentSessions() {
+        const data = await api("/api/agent-sessions");
+        interactiveAgentSessions = data.sessions || [];
+        const session = selectedInteractiveAgentSession();
+        updateInteractiveAgentUi(session);
+        reconnectTerminalStreams();
+      }
+
+      async function startAgentSession() {
+        const agent = selectedAgent();
+        const server = selectedServer();
+        if (!agent || !agent.interactiveTmux || !server) {
+          return;
+        }
+
+        if (typeof agentLaunchDialog.showModal === "function") {
+          agentLaunchDialog.showModal();
+          launchExistingButton.focus();
+          return;
+        }
+
+        await openExistingLoginLaunch();
+      }
+
+      async function openExistingLoginLaunch() {
+        await loadLoginProfiles();
+        if (loginProfiles.length === 0) {
+          setActivePage("settings");
+          setStatusMessage("No saved login profiles for this server. Add one in Settings first.", "warn");
+          return;
+        }
+
+        await launchAgentSession({
+          launchMode: "existing-login",
+          profileId: currentLoginProfileId || defaultLoginProfileId
+        });
+      }
+
+      async function launchAgentSession({ launchMode, profileId = "" }) {
+        const agent = selectedAgent();
+        const server = selectedServer();
+        if (!agent || !agent.interactiveTmux || !server) {
+          return;
+        }
+
+        currentLaunchMode = launchMode;
+        currentLoginProfileId = profileId || "";
+        setActivePage("controls");
+        resetAgentOutput("Starting agent...");
+        reconnectTerminalStreams();
+
+        await startSession();
+
+        await loadPromptPreview({
+          force: true,
+          launchMode,
+          profileId: launchMode === "existing-login" ? profileId : ""
+        });
+
+        const prompt = promptInput.value.trim() || lastSuggestedPrompt || "";
+        const target = targetBelongsToServer(currentTarget, server) ? currentTarget : defaultTargetForServer(server);
+        const objective = objectiveInput.value.trim();
+        const data = await api("/api/agent-sessions", {
+          method: "POST",
+          body: JSON.stringify({
+            agentId: agent.id,
+            agentProfileId: currentAgentRuntimeProfileId || defaultAgentRuntimeProfileId || "default",
+            serverId: server.id,
+            target,
+            launchMode,
+            loginProfileId: launchMode === "existing-login" ? profileId : "",
+            objective,
+            prompt
+          })
+        });
+
+        updateInteractiveAgentUi(data.session);
+        await loadInteractiveAgentSessions();
+        resetAgentOutput(`Connecting to interactive agent ${data.session.target}...`);
+        reconnectTerminalStreams();
+        agentTerminal.focus();
+        setStatusMessage(
+          `${data.session.reused ? "Reused" : "Started"} agent ${data.session.target}${data.session.autoplay?.enabled ? " with autoplay." : prompt ? " and sent prompt." : "."}`,
+          "ok"
+        );
+      }
+
+      async function stopAgentSession() {
+        if (!currentInteractiveAgentId) {
+          return;
+        }
+
+        const data = await api(`/api/agent-sessions/${encodeURIComponent(currentInteractiveAgentId)}/stop`, {
+          method: "POST"
+        });
+
+        await loadInteractiveAgentSessions();
+        updateInteractiveAgentUi(null);
+        resetAgentOutput("Agent terminal is idle.");
+        reconnectTerminalStreams();
+        setStatusMessage(`Stopped interactive agent ${data.session.target}.`, "warn");
+      }
+
+      function serverFormValue() {
+        const id = formId.value.trim();
+        const host = formHost.value.trim();
+        const port = Number(formPort.value);
+        const selected = selectedServer();
+        const preservesSelectedServer = selected && selected.id === id;
+        return {
+          id,
+          name: formName.value.trim(),
+          host,
+          port,
+          encoding: preservesSelectedServer ? selected.encoding || "UTF-8" : "UTF-8",
+          sendMode: preservesSelectedServer ? selected.sendMode || "tmux_keys" : "tmux_keys",
+          launcherCommand: preservesSelectedServer
+            ? selected.launcherCommand || defaultLauncherCommandForServer(host, port)
+            : defaultLauncherCommandForServer(host, port),
+          windowName: preservesSelectedServer
+            ? selected.windowName || defaultWindowNameForServerId(id)
+            : defaultWindowNameForServerId(id),
+          windowNames: preservesSelectedServer ? selected.windowNames || undefined : undefined,
+          tmuxSession: preservesSelectedServer ? selected.tmuxSession || "0" : "0",
+          protocol: preservesSelectedServer ? selected.protocol || "telnet" : "telnet",
+          launcherType: preservesSelectedServer ? selected.launcherType || "custom_command" : "custom_command",
+          loginCommand: preservesSelectedServer ? selected.loginCommand || undefined : undefined,
+          loginWaitMs: preservesSelectedServer ? selected.loginWaitMs || undefined : undefined,
+          notes: formNotes.value.trim()
+        };
+      }
+
+      function setServerFormState({ editable, lockId }) {
+        formId.disabled = !editable;
+        formId.readOnly = Boolean(lockId);
+
+        [
+          formName,
+          formHost,
+          formPort,
+          formNotes
+        ].forEach((element) => {
+          element.disabled = !editable;
+        });
+
+        saveServerButton.disabled = !editable;
+        deleteServerButton.disabled = !editable || !formId.value.trim();
+      }
+
+      function resetServerForm() {
+        formId.value = "";
+        formName.value = "";
+        formHost.value = "";
+        formPort.value = "";
+        formNotes.value = "";
+        customModeBadge.textContent = "New Server";
+        setServerFormState({
+          editable: true,
+          lockId: false
+        });
+      }
+
+      function syncFormToSelection() {
+        const server = selectedServer();
+        if (!server) {
+          resetServerForm();
+          serverHint.textContent = "";
+          refreshDashboardSummary();
+          return;
+        }
+
+        serverHint.textContent = `${server.encoding} / ${server.sendMode} / tmux ${server.tmuxSession || "0"}`;
+        formId.value = server.id || "";
+        formName.value = server.name || "";
+        formHost.value = server.host || "";
+        formPort.value = server.port || "";
+        formNotes.value = server.notes || "";
+        customModeBadge.textContent = server.isBuiltIn ? "Built-in Server" : "Custom Server";
+        setServerFormState({
+          editable: true,
+          lockId: true
+        });
+        refreshDashboardSummary();
+      }
+
+      function openServerSettings(action = "edit") {
+        const server = selectedServer();
+        setActivePage("settings");
+
+        if (action === "new") {
+          resetServerForm();
+          setStatusMessage("Prepared empty custom server form.", "neutral");
+          formId.focus();
+          return;
+        }
+
+        syncFormToSelection();
+
+        if (!server) {
+          setStatusMessage("Select a server first.", "warn");
+          return;
+        }
+
+        if (action === "remove") {
+          setStatusMessage(`Ready to remove server ${server.id}.`, "warn");
+          deleteServerButton.focus();
+          return;
+        }
+
+        setStatusMessage(`Editing server ${server.id}.`, "neutral");
+        formName.focus();
+      }
+
+      function syncAgentSelection() {
+        const agent = selectedAgent();
+        if (!agent) {
+          agentSettingsBadge.textContent = "No Agent";
+          agentHint.textContent = "No agent definitions loaded.";
+          agentProfileHint.textContent = "default";
+          startAgentButton.disabled = true;
+          testAgentButton.disabled = true;
+          reloadPromptButton.disabled = true;
+          stopAgentButton.disabled = true;
+          agentRuntimeProfiles = [];
+          defaultAgentRuntimeProfileId = "default";
+          currentAgentRuntimeProfileId = "default";
+          syncAgentRuntimeProfileSelect();
+          updateInteractiveAgentUi(null);
+          reconnectTerminalStreams();
+          return;
+        }
+
+        agentSettingsBadge.textContent = agent.name || agent.id;
+        agentHint.textContent = buildAgentCommandPreview(agent, "default");
+        startAgentButton.disabled = !agent.interactiveTmux;
+        testAgentButton.disabled = false;
+        reloadPromptButton.disabled = false;
+        syncAgentRuntimeProfileSelect();
+        updateInteractiveAgentUi(selectedInteractiveAgentSession());
+        reconnectTerminalStreams();
+        refreshDashboardSummary();
+      }
+
+      async function loadServers() {
+        const data = await api("/api/servers");
+        servers = data.servers;
+        const previousValue = serverSelect.value;
+        const storedValue = readStoredValue(selectedServerStorageKey) || "";
+        serverSelect.innerHTML = "";
+
+        for (const server of servers) {
+          const option = document.createElement("option");
+          option.value = server.id;
+          option.textContent = `${server.name}${server.isBuiltIn ? "" : " [custom]"} (${server.host}:${server.port})`;
+          serverSelect.appendChild(option);
+        }
+
+        if (servers.some((server) => server.id === previousValue)) {
+          serverSelect.value = previousValue;
+        } else if (storedValue && servers.some((server) => server.id === storedValue)) {
+          serverSelect.value = storedValue;
+        } else if (servers.some((server) => server.id === preferredServerId)) {
+          serverSelect.value = preferredServerId;
+        }
+
+        if (serverSelect.value) {
+          writeStoredValue(selectedServerStorageKey, serverSelect.value);
+        }
+
+        syncFormToSelection();
+        await loadLoginProfiles();
+      }
+
+      async function loadAgents() {
+        const data = await api("/api/agents");
+        agents = data.agents;
+        const previousValue = agentSelect.value;
+        const storedValue = readStoredValue(selectedAgentStorageKey) || "";
+        agentSelect.innerHTML = "";
+
+        for (const agent of agents) {
+          const option = document.createElement("option");
+          option.value = agent.id;
+          option.textContent = `${agent.name} (${agent.command})`;
+          agentSelect.appendChild(option);
+        }
+
+        if (agents.some((agent) => agent.id === previousValue)) {
+          agentSelect.value = previousValue;
+        } else if (storedValue && agents.some((agent) => agent.id === storedValue)) {
+          agentSelect.value = storedValue;
+        }
+
+        if (agentSelect.value) {
+          writeStoredValue(selectedAgentStorageKey, agentSelect.value);
+        }
+
+        syncAgentSelection();
+        await loadAgentRuntimeProfiles();
+      }
+
+      async function loadAgentRuntimeProfiles() {
+        const agent = selectedAgent();
+        if (!agent) {
+          agentRuntimeProfiles = [];
+          defaultAgentRuntimeProfileId = "default";
+          currentAgentRuntimeProfileId = "default";
+          syncAgentRuntimeProfileSelect();
+          return;
+        }
+
+        const storedProfilesByAgent = readStoredObject(selectedAgentProfilesStorageKey, {});
+        const data = await api(`/api/agents/${encodeURIComponent(agent.id)}/profiles`);
+        agentRuntimeProfiles = Array.isArray(data.profiles) ? data.profiles : [];
+        defaultAgentRuntimeProfileId = data.defaultProfileId || agentRuntimeProfiles[0]?.id || "default";
+        currentAgentRuntimeProfileId =
+          storedProfilesByAgent[agent.id] && agentRuntimeProfiles.some((profile) => profile.id === storedProfilesByAgent[agent.id])
+            ? storedProfilesByAgent[agent.id]
+            : defaultAgentRuntimeProfileId;
+        syncAgentRuntimeProfileSelect();
+        agentHint.textContent = buildAgentCommandPreview(agent);
+      }
+
+      async function startSession() {
+        const server = selectedServer();
+        if (!server) {
+          return;
+        }
+
+        const data = await api("/api/sessions", {
+          method: "POST",
+          body: JSON.stringify({ serverId: server.id })
+        });
+
+        currentTarget = data.target;
+        setStatusMessage(data.reused ? "Reused existing tmux window." : "Started new tmux window.", "ok");
+        reconnectTerminalStreams();
+        refreshDashboardSummary();
+        await refreshOutput();
+        await loadPromptPreview({
+          force: true,
+          launchMode: currentLaunchMode,
+          profileId: currentLoginProfileId
+        });
+      }
+
+      async function loginSession(profileId = currentLoginProfileId) {
+        const server = selectedServer();
+        if (!server) {
+          return;
+        }
+
+        if (!currentTarget || !targetBelongsToServer(currentTarget, server)) {
+          await startSession();
+        }
+
+        const data = await api("/api/sessions/login", {
+          method: "POST",
+          body: JSON.stringify({
+            serverId: server.id,
+            target: currentTarget,
+            profileId
+          })
+        });
+
+        setStatusMessage(`Login command sent to ${data.target} using ${data.profileLabel || data.profileId}.`, "ok");
+        await new Promise((resolve) => setTimeout(resolve, data.recommendedRefreshDelayMs || 0));
+        await refreshOutput();
+        await loadPromptPreview({
+          force: true,
+          launchMode: "existing-login",
+          profileId
+        });
+      }
+
+      async function refreshOutput() {
+        if (!currentTarget) {
+          outputTerminal.setPlaceholder("Start a session to view tmux output.");
+          refreshDashboardSummary();
+          return;
+        }
+
+        const server = selectedServer();
+        const data = await api(
+          `/api/sessions/${encodeURIComponent(currentTarget)}/output?lines=220&serverId=${encodeURIComponent(server.id)}`
+        );
+        outputTerminal.renderSnapshot(data.output);
+        reconnectTerminalStreams();
+        refreshDashboardSummary();
+      }
+
+      async function testAgent() {
+        const agent = selectedAgent();
+        if (!agent) {
+          return;
+        }
+
+        const data = await api(`/api/agents/${encodeURIComponent(agent.id)}/test`, {
+          method: "POST"
+        });
+        setStatusMessage(
+          `${agent.id}: ${data.available ? "available" : "unavailable"}${data.detail ? ` / ${data.detail}` : ""}`,
+          data.available ? "ok" : "warn"
+        );
+      }
+
+      async function saveServer() {
+        const payload = serverFormValue();
+        const selected = selectedServer();
+        const isEditingExisting = selected && selected.id === payload.id;
+        const method = isEditingExisting ? "PUT" : "POST";
+        const path = isEditingExisting ? `/api/servers/${encodeURIComponent(payload.id)}` : "/api/servers";
+        const data = await api(path, {
+          method,
+          body: JSON.stringify(payload)
+        });
+        setStatusMessage(`Saved server ${data.server.id}.`, "ok");
+        await loadServers();
+        serverSelect.value = data.server.id;
+        writeStoredValue(selectedServerStorageKey, data.server.id);
+        syncFormToSelection();
+        await loadLoginProfiles();
+      }
+
+      async function deleteServer() {
+        const selected = selectedServer();
+        if (!selected) {
+          const error = new Error("Select a server to delete.");
+          error.code = "SERVER_REQUIRED";
+          throw error;
+        }
+
+        await api(`/api/servers/${encodeURIComponent(selected.id)}`, {
+          method: "DELETE"
+        });
+
+        setStatusMessage(`Deleted server ${selected.id}.`, "warn");
+        await loadServers();
+        currentTarget = "";
+        resetServerForm();
+        reconnectTerminalStreams();
+        refreshDashboardSummary();
+      }
+
+      navButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setActivePage(button.dataset.page);
+        });
+      });
+
+      toggleSidebarButton.addEventListener("click", () => {
+        setSidebarCollapsed(!isSidebarCollapsed);
+      });
+
+      infoToggleButton.addEventListener("click", () => {
+        setInfoDrawerOpen(!infoDrawer.classList.contains("open"));
+      });
+
+      themeToggleButton.addEventListener("click", toggleTheme);
+
+      decreaseOutputFontButton.addEventListener("click", () => {
+        setOutputFontSize(outputFontSize - 1);
+      });
+
+      increaseOutputFontButton.addEventListener("click", () => {
+        setOutputFontSize(outputFontSize + 1);
+      });
+
+      serverSelect.addEventListener("change", () => {
+        writeStoredValue(selectedServerStorageKey, serverSelect.value);
+        syncFormToSelection();
+        reconnectTerminalStreams();
+        loadLoginProfiles().catch(setStatusFromError);
+        loadPromptPreview().catch(setStatusFromError);
+      });
+
+      agentSelect.addEventListener("change", () => {
+        writeStoredValue(selectedAgentStorageKey, agentSelect.value);
+        syncAgentSelection();
+        loadAgentRuntimeProfiles().catch(setStatusFromError);
+        loadPromptPreview().catch(setStatusFromError);
+      });
+
+      testAgentButton.addEventListener("click", () => testAgent().catch(setStatusFromError));
+      startAgentButton.addEventListener("click", () => startAgentSession().catch(setStatusFromError));
+      stopAgentButton.addEventListener("click", () => stopAgentSession().catch(setStatusFromError));
+      reloadPromptButton.addEventListener("click", () => loadPromptPreview({ force: true }).catch(setStatusFromError));
+      clearPromptButton.addEventListener("click", () => {
+        promptInput.value = "";
+        lastSuggestedPrompt = "";
+        setStatusMessage("Cleared prompt override.", "neutral");
+      });
+      objectiveInput.addEventListener("change", () => {
+        if (promptMatchesSuggested()) {
+          loadPromptPreview({ force: true }).catch(setStatusFromError);
+        }
+      });
+      launchExistingButton.addEventListener("click", () => {
+        agentLaunchDialog.close();
+        openExistingLoginLaunch().catch(setStatusFromError);
+      });
+      launchNewUserButton.addEventListener("click", () => {
+        agentLaunchDialog.close();
+        launchAgentSession({ launchMode: "new-user" }).catch(setStatusFromError);
+      });
+      cancelLaunchButton.addEventListener("click", () => {
+        if (agentLaunchDialog.open) {
+          agentLaunchDialog.close();
+        }
+      });
+      agentProfileSelect.addEventListener("change", () => {
+        const agent = selectedAgent();
+        currentAgentRuntimeProfileId = agentProfileSelect.value || defaultAgentRuntimeProfileId || "default";
+        if (agent) {
+          const storedProfilesByAgent = readStoredObject(selectedAgentProfilesStorageKey, {});
+          storedProfilesByAgent[agent.id] = currentAgentRuntimeProfileId;
+          writeStoredValue(selectedAgentProfilesStorageKey, JSON.stringify(storedProfilesByAgent));
+          agentHint.textContent = buildAgentCommandPreview(agent, currentAgentRuntimeProfileId);
+        }
+        syncAgentRuntimeProfileSelect();
+      });
+      addProfileButton.addEventListener("click", () => {
+        if (!selectedServer()) {
+          return;
+        }
+        const draft = createProfileDraft({
+          label: `Profile ${loginProfiles.length + 1}`,
+          isDefault: loginProfiles.length === 0
+        });
+        if (loginProfiles.length === 0) {
+          defaultLoginProfileId = draft.id;
+        }
+        loginProfiles.push(draft);
+        renderLoginProfiles();
+      });
+      saveProfilesButton.addEventListener("click", () => saveLoginProfiles().catch(setStatusFromError));
+
+      newServerButton.addEventListener("click", () => {
+        resetServerForm();
+        setStatusMessage("Prepared empty custom server form.", "neutral");
+      });
+      sidebarNewServerButton.addEventListener("click", () => openServerSettings("new"));
+      sidebarEditServerButton.addEventListener("click", () => openServerSettings("edit"));
+      sidebarRemoveServerButton.addEventListener("click", () => openServerSettings("remove"));
+      saveServerButton.addEventListener("click", () => saveServer().catch(setStatusFromError));
+      deleteServerButton.addEventListener("click", () => deleteServer().catch(setStatusFromError));
+
+      agentShell.addEventListener("click", () => {
+        if (currentInteractiveAgentTarget) {
+          agentTerminal.focus();
+        }
+      });
+
+      outputShell.addEventListener("click", () => {
+        if (currentTarget) {
+          outputTerminal.focus();
+        }
+      });
+
+      window.addEventListener("beforeunload", () => {
+        outputTerminal.disconnect();
+        agentTerminal.disconnect();
+      });
+
+      isSidebarCollapsed = readStoredBoolean(sidebarStorageKey, false);
+      outputFontSize = clamp(readStoredNumber(outputFontStorageKey, 14), minOutputFontSize, maxOutputFontSize);
+      currentTheme = readStoredValue(themeStorageKey) || "dark";
+      currentPage = readStoredValue(pageStorageKey) || "controls";
+
+      applySidebarState();
+      setInfoDrawerOpen(false);
+      setTheme(currentTheme);
+      setOutputFontSize(outputFontSize);
+      setActivePage(currentPage);
+      setStatusMessage("", "neutral");
+      outputTerminal.setPlaceholder("Start a session to view tmux output.");
+      resetAgentOutput();
+      refreshDashboardSummary();
+
+      Promise.all([loadServers(), loadAgents()])
+        .then(async () => {
+          try {
+            await loadInteractiveAgentSessions();
+          } catch (error) {
+            interactiveAgentSessions = [];
+            updateInteractiveAgentUi(null);
+            setStatusMessage(
+              `${error.code || "AGENT_SESSIONS_UNAVAILABLE"}: ${error.message}`,
+              "warn"
+            );
+          }
+
+          syncAgentSelection();
+          updateAgentRunUi();
+          return loadPromptPreview({ force: true });
+        })
+        .catch(setStatusFromError);
+    </script>
+  </body>
+</html>

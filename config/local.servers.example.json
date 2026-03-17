@@ -1,0 +1,21 @@
+{
+  "servers": [
+    {
+      "id": "custom-gbk-mud",
+      "name": "Custom GBK MUD",
+      "host": "mud.example.com",
+      "port": 4000,
+      "encoding": "GBK",
+      "protocol": "telnet",
+      "launcherType": "custom_telnet",
+      "launcherCommand": "luit -encoding GBK telnet mud.example.com 4000",
+      "windowName": "custom_gbk_mud",
+      "windowNames": [
+        "custom_gbk_mud"
+      ],
+      "tmuxSession": "0",
+      "sendMode": "pane_tty",
+      "notes": "Example custom non-UTF-8 server. Prefer scripts/tmux-pane-send.sh if tmux send-keys mangles input."
+    }
+  ]
+}

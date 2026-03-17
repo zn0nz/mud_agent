@@ -1,0 +1,13 @@
+node_modules/
+config/local.secrets.json
+config/local.servers.json
+apps/server/.runtime/
+.claude/settings.local.json
+.DS_Store
+*.swp
+*~
+
+# Optional local-only working notes
+# *_review.md
+# CONTINUATION_*.md
+# *implementation*_plan.md

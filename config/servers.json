@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {
+      "id": "aardwolf",
+      "name": "Aardwolf",
+      "host": "aardmud.org",
+      "port": 4000,
+      "encoding": "UTF-8",
+      "protocol": "telnet",
+      "launcherType": "aardwolf_tintin",
+      "launcherCommand": "./scripts/aardwolf-tintin.sh",
+      "windowName": "aardwolf",
+      "windowNames": [
+        "aardwolf"
+      ],
+      "tmuxSession": "0",
+      "sendMode": "tmux_keys",
+      "isBuiltIn": true,
+      "notes": "TinTin++ launcher bundled in the repo."
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+{
+  "agents": [
+    {
+      "id": "codex",
+      "name": "Codex",
+      "type": "generic_cli",
+      "command": "codex",
+      "args": [
+        "exec",
+        "-s",
+        "danger-full-access",
+        "--skip-git-repo-check",
+        "--json"
+      ],
+      "detectArgs": [
+        "--version"
+      ],
+      "workingDirectory": ".",
+      "promptToStdin": true,
+      "outputFormat": "codex_exec_jsonl",
+      "interactiveTmux": true,
+      "interactiveWindowName": "codex_tui",
+      "interactiveTmuxSession": "0",
+      "interactiveReadyTimeoutMs": 20000,
+      "interactiveReadyPollMs": 250,
+      "interactiveReadyPatterns": [
+        "OpenAI Codex"
+      ],
+      "interactiveReadyAnyPatterns": [
+        "/model to change",
+        "? for shortcuts",
+        "Tip:",
+        "gpt-5.4"
+      ],
+      "interactiveNotReadyPatterns": [
+        "model:     loading"
+      ],
+      "interactiveSubmitDelayMs": 150,
+      "interactiveSubmitConfirmTimeoutMs": 2500,
+      "interactiveSubmitConfirmPatterns": [
+        "Working",
+        "esc to interrupt"
+      ],
+      "interactiveArgs": [
+        "-s",
+        "danger-full-access"
+      ],
+      "notes": "Codex exec profile with full filesystem access so the agent can reach tmux sockets under /tmp. Runtime profile selection comes from Settings."
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "type": "generic_cli",
+      "command": "claude",
+      "args": [
+        "--print",
+        "--dangerously-skip-permissions"
+      ],
+      "detectArgs": [
+        "--version"
+      ],
+      "workingDirectory": ".",
+      "promptToStdin": true,
+      "interactiveTmux": true,
+      "interactiveWindowName": "claude_tui",
+      "interactiveTmuxSession": "0",
+      "interactiveStartupAcknowledgePatterns": [
+        "Claude Code running in Bypass Permissions mode",
+        "Yes, I accept"
+      ],
+      "interactiveStartupAcknowledgeKeys": [
+        "Down",
+        "Enter"
+      ],
+      "interactiveStartupAcknowledgeTimeoutMs": 5000,
+      "interactiveStartupAcknowledgePollMs": 150,
+      "interactiveStartupAcknowledgePostDelayMs": 1200,
+      "interactiveReadyPatterns": [
+        "Claude Code v"
+      ],
+      "interactiveReadyAnyPatterns": [
+        "Welcome back!",
+        "bypass permissions on"
+      ],
+      "interactiveSubmitDelayMs": 1500,
+      "interactiveSubmitConfirmTimeoutMs": 3000,
+      "interactiveSubmitConfirmPatterns": [
+        "esc to interrupt",
+        "Mulling"
+      ],
+      "interactiveArgs": [
+        "--dangerously-skip-permissions"
+      ],
+      "notes": "Non-interactive print mode with tool permissions enabled so the agent can drive tmux-backed sessions."
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "type": "generic_cli",
+      "command": "opencode",
+      "args": [],
+      "detectArgs": [
+        "--version"
+      ],
+      "workingDirectory": ".",
+      "promptToStdin": true,
+      "interactiveTmux": true,
+      "interactiveWindowName": "opencode_tui",
+      "interactiveTmuxSession": "0",
+      "interactiveArgs": [],
+      "interactiveReadyTimeoutMs": 30000,
+      "interactiveReadyPollMs": 250,
+      "interactiveReadyPatterns": [
+        "Ask anything..."
+      ],
+      "interactiveReadyAnyPatterns": [
+        "ctrl+p",
+        "tab agents",
+        "OpenCode Zen",
+        "/status"
+      ],
+      "interactiveSubmitDelayMs": 200,
+      "interactiveSubmitConfirmTimeoutMs": 5000,
+      "interactiveSubmitConfirmPollMs": 150,
+      "interactiveSubmitConfirmPatterns": [
+        "esc interrupt",
+        "Sisyphus on steroids is steering OpenCode.",
+        "OhMyOpenCode"
+      ],
+      "notes": "Starter definition for local CLI detection and run wiring."
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "type": "generic_cli",
+      "command": "openclaw",
+      "args": [],
+      "detectArgs": [
+        "--version"
+      ],
+      "workingDirectory": ".",
+      "promptToStdin": true,
+      "interactiveTmux": true,
+      "interactiveWindowName": "openclaw_tui",
+      "interactiveTmuxSession": "0",
+      "interactiveStartupMode": "inline_prompt",
+      "interactiveReadyTimeoutMs": 20000,
+      "interactiveReadyPollMs": 250,
+      "interactiveReadyPatterns": [
+        "openclaw tui -"
+      ],
+      "interactiveReadyAnyPatterns": [
+        "connected",
+        "running",
+        "idle"
+      ],
+      "interactiveArgs": [
+        "tui",
+        "--session",
+        "mud-agent"
+      ],
+      "promptTemplate": "You are operating an existing MUD session through tmux.\n\nSettings:\n- Target: {target}\n- Server: {serverName}\n- Encoding: {encoding}\n\n{objectiveInstructions}\n\nBasic guidelines:\n- Reuse the existing live tmux session and character unless launch instructions say to create a new user.\n- Inspect the pane before sending commands.\n- Keep actions low-risk and reversible.\n- Follow the objective if one is set.\n- Continue with safe routine steps until blocked.\n\nImportant workflow:\n{guideInstructions}\n- For non-UTF-8 sessions, prefer ./scripts/tmux-pane-send.sh over raw tmux send-keys when input gets mangled.\n- Helper scripts: {helpers}\n\nLaunch workflow:\n{launchInstructions}\n\nStart now: briefly assess the state, take the next safe action, and keep going until blocked.",
+      "notes": "Gateway-backed OpenClaw TUI profile for interactive local control."
+    }
+  ]
+}
