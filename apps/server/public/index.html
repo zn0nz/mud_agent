@@ -1139,6 +1139,8 @@
             </div>
             <label for="agentSelect">Agent</label>
             <select id="agentSelect"></select>
+            <label for="agentProfileSelect">Agent Profile</label>
+            <select id="agentProfileSelect"></select>
             <label for="objectiveInput">Objective</label>
             <textarea
               id="objectiveInput"
@@ -1256,12 +1258,10 @@
                 <div class="panel-header">
                   <div>
                     <div class="panel-title">Agent Details</div>
-                    <div id="agentProfileCopy" class="panel-copy">Choose the runtime profile for the selected agent.</div>
+                    <div id="agentProfileCopy" class="panel-copy">Agent runtime profile is selected from the sidebar.</div>
                   </div>
                   <span id="agentSettingsBadge" class="readonly-badge">No Agent</span>
                 </div>
-                <label for="agentProfileSelect">Agent Profile</label>
-                <select id="agentProfileSelect"></select>
                 <div class="info-list">
                   <div class="info-item">
                     <div class="info-item-label">Selected Agent</div>
@@ -2220,7 +2220,7 @@
         agentProfileSelect.disabled = !agent;
 
         const selectedProfile = selectedAgentRuntimeProfile();
-        agentProfileCopy.textContent = selectedProfile?.description || "Choose the runtime profile for the selected agent.";
+        agentProfileCopy.textContent = selectedProfile?.description || "Agent runtime profile is selected from the sidebar.";
         agentProfileHint.textContent = selectedProfile
           ? `${selectedProfile.label || selectedProfile.id}${selectedProfile.source ? ` / ${selectedProfile.source}` : ""}`
           : "default";

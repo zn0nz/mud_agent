@@ -21,6 +21,17 @@
       "interactiveTmux": true,
       "interactiveWindowName": "codex_tui",
       "interactiveTmuxSession": "0",
+      "interactiveStartupAcknowledgePatterns": [
+        "Update available!",
+        "Press enter to continue"
+      ],
+      "interactiveStartupAcknowledgeKeys": [
+        "Down",
+        "Enter"
+      ],
+      "interactiveStartupAcknowledgeTimeoutMs": 5000,
+      "interactiveStartupAcknowledgePollMs": 150,
+      "interactiveStartupAcknowledgePostDelayMs": 1200,
       "interactiveReadyTimeoutMs": 20000,
       "interactiveReadyPollMs": 250,
       "interactiveReadyPatterns": [
