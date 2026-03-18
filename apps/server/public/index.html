@@ -244,6 +244,30 @@
         font-size: 15px;
       }
 
+      .locale-select {
+        width: auto;
+        min-width: 92px;
+        margin: 0;
+        padding: 8px 30px 8px 12px;
+        color: var(--text);
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--bg-panel);
+      }
+
+      .locale-select option {
+        color: var(--text);
+        background: var(--bg-panel);
+      }
+
+      body[data-theme="dark"] .locale-select {
+        color-scheme: dark;
+      }
+
+      body[data-theme="light"] .locale-select {
+        color-scheme: light;
+      }
+
       .brand {
         display: flex;
         align-items: center;
@@ -1077,8 +1101,8 @@
           <div class="brand">
             <div class="brand-mark"></div>
             <div class="brand-copy">
-              <div class="brand-title">MUD Agent</div>
-              <div class="brand-subtitle">Control Dashboard</div>
+              <div class="brand-title" data-i18n="brand_title">MUD Agent</div>
+              <div class="brand-subtitle" data-i18n="brand_subtitle">Control Dashboard</div>
             </div>
           </div>
         </div>
@@ -1087,6 +1111,17 @@
             <span id="topStreamStatus" class="status-pill neutral">Stream Idle</span>
             <span id="topTargetStatus" class="status-pill neutral">No Target</span>
             <span id="topThemeStatus" class="status-pill neutral">Dark Theme</span>
+            <select
+              id="localeSelect"
+              class="locale-select"
+              aria-label="Language"
+              title="Language"
+              data-i18n="locale_picker_label"
+              data-i18n-attr="aria-label,title"
+            >
+              <option value="en" data-i18n="locale_name_en">English</option>
+              <option value="zh" data-i18n="locale_name_zh">简体中文</option>
+            </select>
             <button id="themeToggleButton" class="icon-button" type="button" aria-label="Toggle theme" title="Toggle theme">
               ◐
             </button>
@@ -1097,18 +1132,18 @@
       <div id="appLayout" class="layout">
         <aside class="sidebar">
           <div class="nav-section">
-            <div class="nav-label">Control</div>
+            <div class="nav-label" data-i18n="nav_control">Control</div>
             <button class="nav-item active" type="button" data-page="controls" title="MUD Monitor">
               <span class="nav-dot"></span>
-              <span class="nav-text">MUD Monitor</span>
+              <span class="nav-text" data-i18n="nav_mud_monitor">MUD Monitor</span>
             </button>
           </div>
 
           <div class="nav-section">
-            <div class="nav-label">Settings</div>
+            <div class="nav-label" data-i18n="nav_settings">Settings</div>
             <button class="nav-item" type="button" data-page="settings" title="Settings">
               <span class="nav-dot"></span>
-              <span class="nav-text">Settings</span>
+              <span class="nav-text" data-i18n="settings_title">Settings</span>
             </button>
           </div>
 
@@ -1116,16 +1151,16 @@
           <div class="panel compact">
             <div class="panel-header">
               <div>
-                <div class="panel-title">Server</div>
+                <div class="panel-title" data-i18n="server_panel_title">Server</div>
               </div>
               <button id="infoToggleButton" class="secondary small" type="button">Info</button>
             </div>
-            <label for="serverSelect">Server</label>
+            <label for="serverSelect" data-i18n="server_label">Server</label>
             <select id="serverSelect"></select>
             <div class="mini-actions">
-              <button id="sidebarNewServerButton" class="secondary" type="button">New</button>
-              <button id="sidebarEditServerButton" class="secondary" type="button">Edit</button>
-              <button id="sidebarRemoveServerButton" class="danger" type="button">Remove</button>
+              <button id="sidebarNewServerButton" class="secondary" type="button" data-i18n="new_button">New</button>
+              <button id="sidebarEditServerButton" class="secondary" type="button" data-i18n="edit_button">Edit</button>
+              <button id="sidebarRemoveServerButton" class="danger" type="button" data-i18n="remove_button">Remove</button>
             </div>
             <div id="status" class="status-card muted"></div>
           </div>
@@ -1133,23 +1168,25 @@
           <div class="panel compact">
             <div class="panel-header">
               <div>
-                <div class="panel-title">Agent Run</div>
+                <div class="panel-title" data-i18n="agent_run_title">Agent Run</div>
               </div>
               <span id="agentRunStatus" class="readonly-badge">idle</span>
             </div>
-            <label for="agentSelect">Agent</label>
+            <label for="agentSelect" data-i18n="agent_label">Agent</label>
             <select id="agentSelect"></select>
-            <label for="agentProfileSelect">Agent Profile</label>
+            <label for="agentProfileSelect" data-i18n="agent_profile_label">Agent Profile</label>
             <select id="agentProfileSelect"></select>
-            <label for="objectiveInput">Objective</label>
+            <label for="objectiveInput" data-i18n="objective_label">Objective</label>
             <textarea
               id="objectiveInput"
               rows="4"
               placeholder="(Optional) Describe the gameplay objective for the agent, for example: finish the beginner tutorial safely, or reach the next town without risky choices."
+              data-i18n="objective_placeholder"
+              data-i18n-attr="placeholder"
             ></textarea>
             <div class="mini-actions">
-              <button id="startAgentButton" type="button">Start Agent</button>
-              <button id="stopAgentButton" class="danger" type="button">Stop Agent</button>
+              <button id="startAgentButton" type="button" data-i18n="start_agent_button">Start Agent</button>
+              <button id="stopAgentButton" class="danger" type="button" data-i18n="stop_agent_button">Stop Agent</button>
             </div>
           </div>
 
@@ -1157,23 +1194,28 @@
             <div class="panel compact">
               <div class="panel-header">
                 <div>
-                  <div class="panel-title">Debug / Info</div>
+                  <div class="panel-title" data-i18n="debug_info_title">Debug / Info</div>
                 </div>
               </div>
               <div class="info-list">
                 <div class="info-item">
-                  <div class="info-item-label">Server Details</div>
+                  <div class="info-item-label" data-i18n="server_details_label">Server Details</div>
                   <div id="serverHint" class="info-item-value">No server selected.</div>
                 </div>
               </div>
-              <label for="promptInput">Prompt</label>
-              <textarea id="promptInput" placeholder="Suggested prompt loads here. Edit it before starting a run if needed."></textarea>
+              <label for="promptInput" data-i18n="prompt_label">Prompt</label>
+              <textarea
+                id="promptInput"
+                placeholder="Suggested prompt loads here. Edit it before starting a run if needed."
+                data-i18n="prompt_placeholder"
+                data-i18n-attr="placeholder"
+              ></textarea>
               <div class="row">
-                <button id="reloadPromptButton" class="secondary" type="button">Load Prompt</button>
-                <button id="clearPromptButton" class="secondary" type="button">Clear Prompt</button>
+                <button id="reloadPromptButton" class="secondary" type="button" data-i18n="load_prompt_button">Load Prompt</button>
+                <button id="clearPromptButton" class="secondary" type="button" data-i18n="clear_prompt_button">Clear Prompt</button>
               </div>
               <div class="sidebar-tools">
-                <button id="testAgentButton" class="secondary" type="button">Test Agent</button>
+                <button id="testAgentButton" class="secondary" type="button" data-i18n="test_agent_button">Test Agent</button>
               </div>
             </div>
           </div>
@@ -1182,22 +1224,22 @@
 
         <dialog id="agentLaunchDialog" class="launch-dialog">
           <form method="dialog" class="launch-dialog-shell">
-            <div class="panel-title">Launch Mode</div>
-            <p class="launch-dialog-copy">
+            <div class="panel-title" data-i18n="launch_mode_title">Launch Mode</div>
+            <p class="launch-dialog-copy" data-i18n="launch_mode_copy">
               Choose how to prepare the selected MUD session before starting the interactive agent.
             </p>
             <div class="launch-options">
               <button id="launchExistingButton" class="launch-option primary" type="button" autofocus>
-                <span class="launch-option-label">AI Agent Will Use Saved Login Profile To Play</span>
-                <span class="launch-option-copy">AI agent will use the selected saved login profile to log in and play.</span>
+                <span class="launch-option-label" data-i18n="launch_existing_label">AI Agent Will Use Saved Login Profile To Play</span>
+                <span class="launch-option-copy" data-i18n="launch_existing_copy">AI agent will use the selected saved login profile to log in and play.</span>
               </button>
               <button id="launchNewUserButton" class="launch-option" type="button">
-                <span class="launch-option-label">AI Agent Will Create A New Character</span>
-                <span class="launch-option-copy">AI agent will create a new character instead of reusing saved credentials.</span>
+                <span class="launch-option-label" data-i18n="launch_new_user_label">AI Agent Will Create A New Character</span>
+                <span class="launch-option-copy" data-i18n="launch_new_user_copy">AI agent will create a new character instead of reusing saved credentials.</span>
               </button>
             </div>
             <div class="launch-dialog-actions">
-              <button id="cancelLaunchButton" class="secondary" type="submit">Cancel</button>
+              <button id="cancelLaunchButton" class="secondary" type="submit" data-i18n="cancel_button">Cancel</button>
             </div>
           </form>
         </dialog>
@@ -1208,7 +1250,7 @@
                 <div class="panel terminal-panel">
                   <div class="panel-header">
                     <div>
-                      <div class="panel-title">Game Monitor</div>
+                      <div class="panel-title" data-i18n="game_monitor_title">Game Monitor</div>
                     </div>
                     <div class="panel-actions">
                       <button
@@ -1227,7 +1269,7 @@
                       >
                         A+
                       </button>
-                      <span class="readonly-badge">Streamed</span>
+                      <span class="readonly-badge" data-i18n="streamed_badge">Streamed</span>
                     </div>
                   </div>
                   <div id="outputShell" class="terminal-shell"></div>
@@ -1236,7 +1278,7 @@
                 <div class="panel terminal-panel">
                   <div class="panel-header">
                     <div>
-                      <div class="panel-title">Agent Monitor</div>
+                      <div class="panel-title" data-i18n="agent_monitor_title">Agent Monitor</div>
                     </div>
                     <div class="panel-actions">
                       <button
@@ -1266,8 +1308,8 @@
           <section class="page" data-page="settings">
             <div class="page-header">
               <div>
-                <h1 class="page-title">Settings</h1>
-                <div class="page-copy">Custom server definitions, appearance preferences, and local dashboard behavior.</div>
+                <h1 class="page-title" data-i18n="settings_title">Settings</h1>
+                <div class="page-copy" data-i18n="settings_copy">Custom server definitions, appearance preferences, and local dashboard behavior.</div>
               </div>
             </div>
 
@@ -1275,18 +1317,18 @@
               <div class="panel">
                 <div class="panel-header">
                   <div>
-                    <div class="panel-title">Agent Details</div>
+                    <div class="panel-title" data-i18n="agent_details_title">Agent Details</div>
                     <div id="agentProfileCopy" class="panel-copy">Agent runtime profile is selected from the sidebar.</div>
                   </div>
                   <span id="agentSettingsBadge" class="readonly-badge">No Agent</span>
                 </div>
                 <div class="info-list">
                   <div class="info-item">
-                    <div class="info-item-label">Selected Agent</div>
+                    <div class="info-item-label" data-i18n="selected_agent_label">Selected Agent</div>
                     <div id="agentHint" class="info-item-value">No agent definitions loaded.</div>
                   </div>
                   <div class="info-item">
-                    <div class="info-item-label">Selected Profile</div>
+                    <div class="info-item-label" data-i18n="selected_profile_label">Selected Profile</div>
                     <div id="agentProfileHint" class="info-item-value">default</div>
                   </div>
                 </div>
@@ -1295,7 +1337,7 @@
               <div class="panel">
                 <div class="panel-header">
                   <div>
-                    <div class="panel-title">Login Profiles</div>
+                    <div class="panel-title" data-i18n="login_profiles_title">Login Profiles</div>
                     <div id="profilePanelCopy" class="panel-copy">Manage saved usernames and passwords for the selected server.</div>
                   </div>
                   <span id="profileServerBadge" class="readonly-badge">No Server</span>
@@ -1303,8 +1345,8 @@
                 <div class="profile-stack">
                   <div id="profileList" class="profile-list"></div>
                   <div class="profile-toolbar">
-                    <button id="addProfileButton" class="secondary" type="button">Add Profile</button>
-                    <button id="saveProfilesButton" type="button">Save Profiles</button>
+                    <button id="addProfileButton" class="secondary" type="button" data-i18n="add_profile_button">Add Profile</button>
+                    <button id="saveProfilesButton" type="button" data-i18n="save_profiles_button">Save Profiles</button>
                   </div>
                 </div>
               </div>
@@ -1312,37 +1354,37 @@
               <div class="panel">
               <div class="panel-header">
                   <div>
-                    <div class="panel-title">Custom Server</div>
-                    <div class="panel-copy">Create or edit alternate hosts and notes. Connection details are managed automatically.</div>
+                    <div class="panel-title" data-i18n="custom_server_title">Custom Server</div>
+                    <div class="panel-copy" data-i18n="custom_server_copy">Create or edit alternate hosts and notes. Connection details are managed automatically.</div>
                   </div>
                   <span id="customModeBadge" class="readonly-badge">Edit Server</span>
               </div>
               <div class="field-grid">
                   <div>
-                    <label for="formId">ID</label>
-                    <input id="formId" placeholder="my-mud" />
+                    <label for="formId" data-i18n="id_label">ID</label>
+                    <input id="formId" placeholder="my-mud" data-i18n="id_placeholder" data-i18n-attr="placeholder" />
                   </div>
                   <div>
-                    <label for="formName">Name</label>
-                    <input id="formName" placeholder="My MUD" />
+                    <label for="formName" data-i18n="name_label">Name</label>
+                    <input id="formName" placeholder="My MUD" data-i18n="name_placeholder" data-i18n-attr="placeholder" />
                   </div>
                   <div>
-                    <label for="formHost">Host</label>
-                    <input id="formHost" placeholder="mud.example.com" />
+                    <label for="formHost" data-i18n="host_label">Host</label>
+                    <input id="formHost" placeholder="mud.example.com" data-i18n="host_placeholder" data-i18n-attr="placeholder" />
                   </div>
                   <div>
-                    <label for="formPort">Port</label>
-                    <input id="formPort" type="number" placeholder="4000" />
+                    <label for="formPort" data-i18n="port_label">Port</label>
+                    <input id="formPort" type="number" placeholder="4000" data-i18n="port_placeholder" data-i18n-attr="placeholder" />
                   </div>
                   <div class="full">
-                    <label for="formNotes">Notes</label>
-                    <textarea id="formNotes" placeholder="Connection or encoding notes"></textarea>
+                    <label for="formNotes" data-i18n="notes_label">Notes</label>
+                    <textarea id="formNotes" placeholder="Connection or encoding notes" data-i18n="notes_placeholder" data-i18n-attr="placeholder"></textarea>
                   </div>
                 </div>
                 <div class="row">
-                  <button id="newServerButton" class="secondary" type="button">New</button>
-                  <button id="saveServerButton" type="button">Save Server</button>
-                  <button id="deleteServerButton" class="danger" type="button">Delete Server</button>
+                  <button id="newServerButton" class="secondary" type="button" data-i18n="new_button">New</button>
+                  <button id="saveServerButton" type="button" data-i18n="save_server_button">Save Server</button>
+                  <button id="deleteServerButton" class="danger" type="button" data-i18n="delete_server_button">Delete Server</button>
                 </div>
               </div>
             </div>
@@ -1358,6 +1400,7 @@
       const appLayout = document.getElementById("appLayout");
       const toggleSidebarButton = document.getElementById("toggleSidebarButton");
       const themeToggleButton = document.getElementById("themeToggleButton");
+      const localeSelect = document.getElementById("localeSelect");
       const infoToggleButton = document.getElementById("infoToggleButton");
       const infoDrawer = document.getElementById("infoDrawer");
       const topStreamStatus = document.getElementById("topStreamStatus");
@@ -1432,11 +1475,20 @@
       let agentFontSize = 14;
       let currentPage = "controls";
       let currentTheme = "dark";
+      let currentLocale = "en";
+      let currentStatusState = {
+        mode: "raw",
+        key: "",
+        message: "",
+        vars: {},
+        tone: "neutral"
+      };
       const sidebarStorageKey = "mud-agent.sidebar-collapsed";
       const outputFontStorageKey = "mud-agent.game-monitor-font-size";
       const legacyOutputFontStorageKey = "mud-agent.tmux-output-font-size";
       const agentFontStorageKey = "mud-agent.agent-monitor-font-size";
       const themeStorageKey = "mud-agent.theme";
+      const localeStorageKey = "mud-agent.locale";
       const pageStorageKey = "mud-agent.page";
       const selectedServerStorageKey = "mud-agent.selected-server";
       const selectedAgentStorageKey = "mud-agent.selected-agent";
@@ -1492,6 +1544,352 @@
         return Math.min(Math.max(value, min), max);
       }
 
+      const I18N = {
+        en: {
+          document_title: "MUD Agent",
+          brand_title: "MUD Agent",
+          brand_subtitle: "Control Dashboard",
+          locale_picker_label: "Language",
+          locale_name_en: "English",
+          locale_name_zh: "简体中文",
+          nav_control: "Control",
+          nav_mud_monitor: "MUD Monitor",
+          nav_settings: "Settings",
+          server_panel_title: "Server",
+          server_label: "Server",
+          new_button: "New",
+          edit_button: "Edit",
+          remove_button: "Remove",
+          agent_run_title: "Agent Run",
+          agent_label: "Agent",
+          agent_profile_label: "Agent Profile",
+          objective_label: "Objective",
+          objective_placeholder:
+            "(Optional) Describe the gameplay objective for the agent, for example: finish the beginner tutorial safely, or reach the next town without risky choices.",
+          start_agent_button: "Start Agent",
+          stop_agent_button: "Stop Agent",
+          debug_info_title: "Debug / Info",
+          server_details_label: "Server Details",
+          no_server_selected: "No server selected.",
+          prompt_label: "Prompt",
+          prompt_placeholder: "Suggested prompt loads here. Edit it before starting a run if needed.",
+          load_prompt_button: "Load Prompt",
+          clear_prompt_button: "Clear Prompt",
+          test_agent_button: "Test Agent",
+          launch_mode_title: "Launch Mode",
+          launch_mode_copy: "Choose how to prepare the selected MUD session before starting the interactive agent.",
+          launch_existing_label: "AI Agent Will Use Saved Login Profile To Play",
+          launch_existing_copy: "AI agent will use the selected saved login profile to log in and play.",
+          launch_new_user_label: "AI Agent Will Create A New Character",
+          launch_new_user_copy: "AI agent will create a new character instead of reusing saved credentials.",
+          cancel_button: "Cancel",
+          game_monitor_title: "Game Monitor",
+          agent_monitor_title: "Agent Monitor",
+          streamed_badge: "Streamed",
+          settings_title: "Settings",
+          settings_copy: "Custom server definitions, appearance preferences, and local dashboard behavior.",
+          agent_details_title: "Agent Details",
+          selected_agent_label: "Selected Agent",
+          selected_profile_label: "Selected Profile",
+          login_profiles_title: "Login Profiles",
+          add_profile_button: "Add Profile",
+          save_profiles_button: "Save Profiles",
+          custom_server_title: "Custom Server",
+          custom_server_copy: "Create or edit alternate hosts and notes. Connection details are managed automatically.",
+          id_label: "ID",
+          id_placeholder: "my-mud",
+          name_label: "Name",
+          name_placeholder: "My MUD",
+          host_label: "Host",
+          host_placeholder: "mud.example.com",
+          port_label: "Port",
+          port_placeholder: "4000",
+          notes_label: "Notes",
+          notes_placeholder: "Connection or encoding notes",
+          save_server_button: "Save Server",
+          delete_server_button: "Delete Server",
+          stream_idle: "Stream Idle",
+          stream_live: "Stream Live",
+          no_target: "No Target",
+          light_theme: "Light Theme",
+          dark_theme: "Dark Theme",
+          toggle_theme: "Toggle theme",
+          expand_navigation_sidebar: "Expand navigation sidebar",
+          collapse_navigation_sidebar: "Collapse navigation sidebar",
+          info_button: "Info",
+          hide_button: "Hide",
+          decrease_output_font: "Decrease TMUX output font size",
+          increase_output_font: "Increase TMUX output font size",
+          decrease_agent_font: "Decrease agent monitor font size",
+          increase_agent_font: "Increase agent monitor font size",
+          output_terminal_placeholder: "Start a session to view tmux output.",
+          agent_terminal_idle: "Agent terminal is idle.",
+          terminal_disconnected_retrying: "TERMINAL_DISCONNECTED: retrying terminal stream",
+          request_failed: "Request failed",
+          no_active_run: "No active run",
+          idle_badge: "idle",
+          interactive_badge: "interactive",
+          no_agent: "No Agent",
+          no_server: "No Server",
+          default_value: "default",
+          agent_runtime_profile_copy: "Agent runtime profile is selected from the sidebar.",
+          no_agent_definitions_loaded: "No agent definitions loaded.",
+          manage_saved_credentials_selected_server: "Manage saved usernames and passwords for the selected server.",
+          manage_saved_credentials_for_server: "Manage saved usernames and passwords for ${serverName}.",
+          select_server_manage_profiles: "Select a server to manage login profiles.",
+          no_saved_profiles_add_one: "No saved profiles yet. Add one below.",
+          profile_title_fallback: "Profile",
+          profile_default_label: "Default",
+          profile_remove_button: "Remove",
+          profile_name_label: "Profile Name",
+          profile_name_placeholder: "Default",
+          username_label: "Username",
+          username_placeholder: "username",
+          password_label: "Password",
+          password_placeholder: "password",
+          invalid_login_profile: "Each profile requires a name, username, and password.",
+          login_profile_singular: "login profile",
+          login_profile_plural: "login profiles",
+          saved_login_profiles: "Saved ${count} ${profileWord} for ${serverId}.",
+          no_saved_login_profiles: "No saved login profiles for this server. Add one in Settings first.",
+          starting_agent: "Starting agent...",
+          connecting_interactive_agent: "Connecting to interactive agent ${target}...",
+          reused_existing_tmux_window: "Reused existing tmux window.",
+          started_new_tmux_window: "Started new tmux window.",
+          login_command_sent: "Login command sent to ${target} using ${profileLabel}.",
+          agent_available: "available",
+          agent_unavailable: "unavailable",
+          agent_test_status: "${agentId}: ${availability}${detailSuffix}",
+          saved_server: "Saved server ${serverId}.",
+          deleted_server: "Deleted server ${serverId}.",
+          select_server_to_delete: "Select a server to delete.",
+          prepared_empty_custom_server_form: "Prepared empty custom server form.",
+          select_server_first: "Select a server first.",
+          ready_to_remove_server: "Ready to remove server ${serverId}.",
+          editing_server: "Editing server ${serverId}.",
+          cleared_prompt_override: "Cleared prompt override.",
+          stopped_interactive_agent: "Stopped interactive agent ${target}.",
+          agent_status_message: "${action} agent ${target}${suffix}",
+          agent_action_started: "Started",
+          agent_action_reused: "Reused",
+          agent_status_suffix_autoplay: " with autoplay.",
+          agent_status_suffix_prompt: " and sent prompt.",
+          agent_status_suffix_plain: ".",
+          new_server_badge: "New Server",
+          built_in_server_badge: "Built-in Server",
+          custom_server_badge: "Custom Server",
+          server_custom_suffix: " [custom]",
+          interactive_prefix: "interactive",
+          profile_label_number: "Profile ${number}"
+        },
+        zh: {
+          document_title: "MUD 智能体",
+          brand_title: "MUD 智能体",
+          brand_subtitle: "控制面板",
+          locale_picker_label: "语言",
+          locale_name_en: "English",
+          locale_name_zh: "简体中文",
+          nav_control: "控制",
+          nav_mud_monitor: "MUD 监视器",
+          nav_settings: "设置",
+          server_panel_title: "服务器",
+          server_label: "服务器",
+          new_button: "新建",
+          edit_button: "编辑",
+          remove_button: "移除",
+          agent_run_title: "智能体运行",
+          agent_label: "智能体",
+          agent_profile_label: "智能体配置",
+          objective_label: "目标",
+          objective_placeholder: "（可选）描述智能体的游戏目标，例如：安全完成新手教程，或在不冒险的情况下到达下一个城镇。",
+          start_agent_button: "启动智能体",
+          stop_agent_button: "停止智能体",
+          debug_info_title: "调试 / 信息",
+          server_details_label: "服务器详情",
+          no_server_selected: "未选择服务器。",
+          prompt_label: "提示词",
+          prompt_placeholder: "建议提示词会显示在这里。开始运行前如有需要可进行编辑。",
+          load_prompt_button: "加载提示词",
+          clear_prompt_button: "清除提示词",
+          test_agent_button: "测试智能体",
+          launch_mode_title: "启动模式",
+          launch_mode_copy: "选择在启动交互式智能体之前，如何准备当前选中的 MUD 会话。",
+          launch_existing_label: "AI 智能体将使用已保存的登录配置开始游戏",
+          launch_existing_copy: "AI 智能体将使用当前选中的已保存登录配置进行登录并开始游戏。",
+          launch_new_user_label: "AI 智能体将创建新角色",
+          launch_new_user_copy: "AI 智能体将创建新角色，而不是复用已保存的凭据。",
+          cancel_button: "取消",
+          game_monitor_title: "游戏监视器",
+          agent_monitor_title: "智能体监视器",
+          streamed_badge: "已流式连接",
+          settings_title: "设置",
+          settings_copy: "自定义服务器定义、外观偏好和本地控制台行为。",
+          agent_details_title: "智能体详情",
+          selected_agent_label: "当前智能体",
+          selected_profile_label: "当前配置",
+          login_profiles_title: "登录配置",
+          add_profile_button: "添加配置",
+          save_profiles_button: "保存配置",
+          custom_server_title: "自定义服务器",
+          custom_server_copy: "创建或编辑备用主机和备注。连接细节会自动管理。",
+          id_label: "ID",
+          id_placeholder: "my-mud",
+          name_label: "名称",
+          name_placeholder: "我的 MUD",
+          host_label: "主机",
+          host_placeholder: "mud.example.com",
+          port_label: "端口",
+          port_placeholder: "4000",
+          notes_label: "备注",
+          notes_placeholder: "连接或编码备注",
+          save_server_button: "保存服务器",
+          delete_server_button: "删除服务器",
+          stream_idle: "流空闲",
+          stream_live: "流在线",
+          no_target: "无目标",
+          light_theme: "浅色主题",
+          dark_theme: "深色主题",
+          toggle_theme: "切换主题",
+          expand_navigation_sidebar: "展开导航侧边栏",
+          collapse_navigation_sidebar: "收起导航侧边栏",
+          info_button: "信息",
+          hide_button: "隐藏",
+          decrease_output_font: "减小 TMUX 输出字号",
+          increase_output_font: "增大 TMUX 输出字号",
+          decrease_agent_font: "减小智能体监视器字号",
+          increase_agent_font: "增大智能体监视器字号",
+          output_terminal_placeholder: "启动会话后即可查看 tmux 输出。",
+          agent_terminal_idle: "智能体终端当前空闲。",
+          terminal_disconnected_retrying: "终端连接已断开：正在重试终端流",
+          request_failed: "请求失败",
+          no_active_run: "无活跃运行",
+          idle_badge: "空闲",
+          interactive_badge: "交互中",
+          no_agent: "无智能体",
+          no_server: "无服务器",
+          default_value: "默认",
+          agent_runtime_profile_copy: "智能体运行配置从侧边栏中选择。",
+          no_agent_definitions_loaded: "未加载智能体定义。",
+          manage_saved_credentials_selected_server: "管理当前所选服务器的已保存用户名和密码。",
+          manage_saved_credentials_for_server: "管理 ${serverName} 的已保存用户名和密码。",
+          select_server_manage_profiles: "选择服务器以管理登录配置。",
+          no_saved_profiles_add_one: "还没有已保存配置。在下方新增一个。",
+          profile_title_fallback: "配置",
+          profile_default_label: "默认",
+          profile_remove_button: "移除",
+          profile_name_label: "配置名称",
+          profile_name_placeholder: "默认",
+          username_label: "用户名",
+          username_placeholder: "username",
+          password_label: "密码",
+          password_placeholder: "password",
+          invalid_login_profile: "每个配置都必须填写名称、用户名和密码。",
+          login_profile_singular: "登录配置",
+          login_profile_plural: "登录配置",
+          saved_login_profiles: "已为 ${serverId} 保存 ${count} 个${profileWord}。",
+          no_saved_login_profiles: "该服务器还没有已保存登录配置。请先在“设置”中添加。",
+          starting_agent: "正在启动智能体...",
+          connecting_interactive_agent: "正在连接交互式智能体 ${target}...",
+          reused_existing_tmux_window: "已复用现有 tmux 窗口。",
+          started_new_tmux_window: "已启动新的 tmux 窗口。",
+          login_command_sent: "已向 ${target} 发送登录命令，使用配置 ${profileLabel}。",
+          agent_available: "可用",
+          agent_unavailable: "不可用",
+          agent_test_status: "${agentId}: ${availability}${detailSuffix}",
+          saved_server: "已保存服务器 ${serverId}。",
+          deleted_server: "已删除服务器 ${serverId}。",
+          select_server_to_delete: "请先选择要删除的服务器。",
+          prepared_empty_custom_server_form: "已准备空白的自定义服务器表单。",
+          select_server_first: "请先选择服务器。",
+          ready_to_remove_server: "已准备移除服务器 ${serverId}。",
+          editing_server: "正在编辑服务器 ${serverId}。",
+          cleared_prompt_override: "已清除提示词覆盖内容。",
+          stopped_interactive_agent: "已停止交互式智能体 ${target}。",
+          agent_status_message: "已${action}智能体 ${target}${suffix}",
+          agent_action_started: "启动",
+          agent_action_reused: "复用",
+          agent_status_suffix_autoplay: "，并启用了自动操作。",
+          agent_status_suffix_prompt: "，并已发送提示词。",
+          agent_status_suffix_plain: "。",
+          new_server_badge: "新建服务器",
+          built_in_server_badge: "内置服务器",
+          custom_server_badge: "自定义服务器",
+          server_custom_suffix: " [自定义]",
+          interactive_prefix: "交互模式",
+          profile_label_number: "配置 ${number}"
+        }
+      };
+
+      function interpolate(template, vars = {}) {
+        return String(template).replace(/\$\{(\w+)\}/g, (_match, key) => {
+          const value = vars[key];
+          return value === undefined || value === null ? "" : String(value);
+        });
+      }
+
+      function t(key, vars = {}) {
+        const localeTable = I18N[currentLocale] || I18N.en;
+        const fallback = I18N.en[key] || key;
+        return interpolate(localeTable[key] || fallback, vars);
+      }
+
+      function applyI18n(root = document) {
+        root.querySelectorAll("[data-i18n]").forEach((element) => {
+          const key = element.dataset.i18n;
+          const translated = t(key);
+          const attributes = String(element.dataset.i18nAttr || "")
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+          const isFormField = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement;
+
+          if (!isFormField) {
+            element.textContent = translated;
+          }
+
+          for (const attribute of attributes) {
+            element.setAttribute(attribute, translated);
+          }
+        });
+      }
+
+      function applyLocale() {
+        document.documentElement.lang = currentLocale === "zh" ? "zh-CN" : "en";
+        document.title = t("document_title");
+        localeSelect.value = currentLocale;
+        applyI18n(document);
+        navButtons.forEach((button) => {
+          button.title = button.dataset.page === "settings" ? t("settings_title") : t("nav_mud_monitor");
+        });
+        decreaseOutputFontButton.setAttribute("aria-label", t("decrease_output_font"));
+        decreaseOutputFontButton.title = t("decrease_output_font");
+        increaseOutputFontButton.setAttribute("aria-label", t("increase_output_font"));
+        increaseOutputFontButton.title = t("increase_output_font");
+        decreaseAgentFontButton.setAttribute("aria-label", t("decrease_agent_font"));
+        decreaseAgentFontButton.title = t("decrease_agent_font");
+        increaseAgentFontButton.setAttribute("aria-label", t("increase_agent_font"));
+        increaseAgentFontButton.title = t("increase_agent_font");
+        applySidebarState();
+        setInfoDrawerOpen(infoDrawer.classList.contains("open"));
+        updateServerContextUi();
+        refreshProfilePanelText();
+        localizeRenderedProfileCards();
+        syncAgentRuntimeProfileSelect();
+        syncAgentSelection();
+        updateAgentRunUi();
+        reconnectTerminalStreams();
+        applyTheme();
+        renderStatusState();
+      }
+
+      function setLocale(locale, { persist = true } = {}) {
+        currentLocale = Object.prototype.hasOwnProperty.call(I18N, locale) ? locale : "en";
+        if (persist) {
+          writeStoredValue(localeStorageKey, currentLocale);
+        }
+        applyLocale();
+      }
+
       function defaultWindowNameForServerId(serverId) {
         return (
           String(serverId || "")
@@ -1513,9 +1911,9 @@
         toggleSidebarButton.setAttribute("aria-expanded", String(!isSidebarCollapsed));
         toggleSidebarButton.setAttribute(
           "aria-label",
-          isSidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"
+          isSidebarCollapsed ? t("expand_navigation_sidebar") : t("collapse_navigation_sidebar")
         );
-        toggleSidebarButton.title = isSidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar";
+        toggleSidebarButton.title = isSidebarCollapsed ? t("expand_navigation_sidebar") : t("collapse_navigation_sidebar");
       }
 
       function setSidebarCollapsed(collapsed) {
@@ -1527,9 +1925,10 @@
       function applyTheme() {
         body.dataset.theme = currentTheme;
         document.documentElement.style.colorScheme = currentTheme === "light" ? "light" : "dark";
-        const themeLabel = currentTheme === "light" ? "Light" : "Dark";
-        topThemeStatus.textContent = `${themeLabel} Theme`;
+        topThemeStatus.textContent = currentTheme === "light" ? t("light_theme") : t("dark_theme");
         topThemeStatus.className = "status-pill neutral";
+        themeToggleButton.setAttribute("aria-label", t("toggle_theme"));
+        themeToggleButton.title = t("toggle_theme");
         outputTerminal.refreshTheme();
         agentTerminal.refreshTheme();
       }
@@ -1548,7 +1947,7 @@
         const expanded = Boolean(open);
         infoDrawer.classList.toggle("open", expanded);
         infoToggleButton.setAttribute("aria-expanded", String(expanded));
-        infoToggleButton.textContent = expanded ? "Hide" : "Info";
+        infoToggleButton.textContent = expanded ? t("hide_button") : t("info_button");
       }
 
       function setActivePage(page) {
@@ -1870,7 +2269,7 @@
             socket = null;
             setLive(false);
             if (desiredConnection) {
-              onStatus("TERMINAL_DISCONNECTED: retrying terminal stream", "warn");
+              onStatus(t("terminal_disconnected_retrying"), "warn");
               scheduleReconnect();
             }
           });
@@ -1956,7 +2355,7 @@
 
         const data = await response.json();
         if (!response.ok) {
-          const error = new Error(data.error || "Request failed");
+          const error = new Error(data.error || t("request_failed"));
           error.code = data.code || "REQUEST_FAILED";
           error.details = data.details;
           throw error;
@@ -1976,18 +2375,19 @@
         maxOutputFontSize
       );
       currentTheme = readStoredValue(themeStorageKey) || "dark";
+      currentLocale = readStoredValue(localeStorageKey) || "en";
       currentPage = readStoredValue(pageStorageKey) || "controls";
 
       const outputTerminal = createTerminalController({
         shell: outputShell,
-        emptyMessage: "Start a session to view tmux output.",
+        emptyMessage: t("output_terminal_placeholder"),
         fontSize: outputFontSize,
         onConnectionChange: refreshDashboardSummary,
         onStatus: setStatusMessage
       });
       const agentTerminal = createTerminalController({
         shell: agentShell,
-        emptyMessage: "Agent terminal is idle.",
+        emptyMessage: t("agent_terminal_idle"),
         fontSize: agentFontSize,
         onConnectionChange: refreshDashboardSummary,
         onStatus: setStatusMessage
@@ -2024,7 +2424,7 @@
         return names.has(targetWindow);
       }
 
-      function resetAgentOutput(message = "Agent terminal is idle.") {
+      function resetAgentOutput(message = t("agent_terminal_idle")) {
         agentTerminal.setPlaceholder(message);
       }
 
@@ -2039,7 +2439,7 @@
           });
         } else {
           outputTerminal.disconnect();
-          outputTerminal.setPlaceholder("Start a session to view tmux output.");
+          outputTerminal.setPlaceholder(t("output_terminal_placeholder"));
         }
 
         if (currentInteractiveAgentTarget) {
@@ -2049,7 +2449,7 @@
           });
         } else {
           agentTerminal.disconnect();
-          agentTerminal.setPlaceholder("Agent terminal is idle.");
+          agentTerminal.setPlaceholder(t("agent_terminal_idle"));
         }
 
         outputTerminal.setInputEnabled(Boolean(currentTarget));
@@ -2062,8 +2462,33 @@
       }
 
       function setStatusMessage(message, tone = "neutral") {
+        currentStatusState = {
+          mode: "raw",
+          key: "",
+          message: message || "",
+          vars: {},
+          tone
+        };
+        renderStatusState();
+      }
+
+      function setStatusKey(key, vars = {}, tone = "neutral") {
+        currentStatusState = {
+          mode: "key",
+          key,
+          message: "",
+          vars,
+          tone
+        };
+        renderStatusState();
+      }
+
+      function renderStatusState() {
+        const message = currentStatusState.mode === "key"
+          ? t(currentStatusState.key, currentStatusState.vars)
+          : currentStatusState.message;
         status.textContent = message || "";
-        applyStatusTone(tone);
+        applyStatusTone(currentStatusState.tone || "neutral");
       }
 
       function setStatusFromError(error) {
@@ -2077,13 +2502,13 @@
         const liveTarget = currentTarget || currentInteractiveAgentTarget || "";
         const liveStream = outputTerminal.isLive() || agentTerminal.isLive();
 
-        topStreamStatus.textContent = liveStream ? "Stream Live" : "Stream Idle";
+        topStreamStatus.textContent = liveStream ? t("stream_live") : t("stream_idle");
         topStreamStatus.className = `status-pill ${liveStream ? "ok" : "neutral"}`;
-        topTargetStatus.textContent = liveTarget || defaultTarget || "No Target";
+        topTargetStatus.textContent = liveTarget || defaultTarget || t("no_target");
         topTargetStatus.className = `status-pill ${liveTarget ? "ok" : defaultTarget ? "warn" : "neutral"}`;
 
         if (!server) {
-          serverHint.textContent = "";
+          serverHint.textContent = t("no_server_selected");
         }
 
         if (!status.textContent && !liveTarget) {
@@ -2093,14 +2518,14 @@
 
       function updateAgentRunUi() {
         if (currentInteractiveAgentTarget) {
-          agentRunStatus.textContent = "interactive";
+          agentRunStatus.textContent = t("interactive_badge");
           agentRunStatus.classList.add("live");
           agentRunTarget.textContent = `${currentInteractiveAgentId} @ ${currentInteractiveAgentTarget}`;
           stopAgentButton.disabled = false;
         } else {
-          agentRunStatus.textContent = "idle";
+          agentRunStatus.textContent = t("idle_badge");
           agentRunStatus.classList.remove("live");
-          agentRunTarget.textContent = "No active run";
+          agentRunTarget.textContent = t("no_active_run");
           stopAgentButton.disabled = true;
         }
 
@@ -2171,7 +2596,7 @@
 
       function buildAgentCommandPreview(agent, profileId = currentAgentRuntimeProfileId) {
         if (!agent) {
-          return "No agent definitions loaded.";
+          return t("no_agent_definitions_loaded");
         }
 
         const applyProfile = (command, rawArgs) => {
@@ -2246,7 +2671,7 @@
             : agent.args;
           const interactivePreview = applyProfile(interactiveCommand, interactiveArgs);
           if (interactivePreview !== details[0]) {
-            details.push(`interactive ${interactivePreview}`);
+            details.push(`${t("interactive_prefix")} ${interactivePreview}`);
           }
         }
         if (agent.notes) {
@@ -2276,7 +2701,7 @@
         if (agentRuntimeProfiles.length === 0) {
           const option = document.createElement("option");
           option.value = "default";
-          option.textContent = "default";
+          option.textContent = t("default_value");
           agentProfileSelect.appendChild(option);
         }
 
@@ -2284,26 +2709,21 @@
         agentProfileSelect.disabled = !agent;
 
         const selectedProfile = selectedAgentRuntimeProfile();
-        agentProfileCopy.textContent = selectedProfile?.description || "Agent runtime profile is selected from the sidebar.";
+        agentProfileCopy.textContent = selectedProfile?.description || t("agent_runtime_profile_copy");
         agentProfileHint.textContent = selectedProfile
           ? `${selectedProfile.label || selectedProfile.id}${selectedProfile.source ? ` / ${selectedProfile.source}` : ""}`
-          : "default";
+          : t("default_value");
       }
 
       function renderLoginProfiles() {
         const server = selectedServer();
-        profileServerBadge.textContent = server ? server.name : "No Server";
-        profilePanelCopy.textContent = server
-          ? `Manage saved usernames and passwords for ${server.name}.`
-          : "Select a server to manage login profiles.";
-        addProfileButton.disabled = !server;
-        saveProfilesButton.disabled = !server;
+        refreshProfilePanelText();
         profileList.innerHTML = "";
 
         if (!server) {
           const empty = document.createElement("div");
           empty.className = "info-item";
-          empty.textContent = "No server selected.";
+          empty.textContent = t("no_server_selected");
           profileList.appendChild(empty);
           return;
         }
@@ -2311,7 +2731,7 @@
         if (loginProfiles.length === 0) {
           const empty = document.createElement("div");
           empty.className = "info-item";
-          empty.textContent = "No saved profiles yet. Add one below.";
+          empty.textContent = t("no_saved_profiles_add_one");
           profileList.appendChild(empty);
           return;
         }
@@ -2326,7 +2746,7 @@
 
           const title = document.createElement("div");
           title.className = "profile-card-title";
-          title.textContent = profile.label || "Profile";
+          title.textContent = profile.label || t("profile_title_fallback");
 
           const actions = document.createElement("div");
           actions.className = "panel-actions";
@@ -2339,13 +2759,13 @@
           defaultInput.value = profile.id;
           defaultInput.checked = profile.isDefault;
           const defaultText = document.createElement("span");
-          defaultText.textContent = "Default";
+          defaultText.textContent = t("profile_default_label");
           defaultLabel.append(defaultInput, defaultText);
 
           const removeButton = document.createElement("button");
           removeButton.type = "button";
           removeButton.className = "secondary small";
-          removeButton.textContent = "Remove";
+          removeButton.textContent = t("profile_remove_button");
           removeButton.addEventListener("click", () => {
             loginProfiles = loginProfiles.filter((entry) => entry.id !== profile.id);
             if (defaultLoginProfileId === profile.id) {
@@ -2366,36 +2786,98 @@
 
           const labelWrap = document.createElement("div");
           const labelLabel = document.createElement("label");
-          labelLabel.textContent = "Profile Name";
+          labelLabel.textContent = t("profile_name_label");
           const labelInput = document.createElement("input");
           labelInput.value = profile.label;
-          labelInput.placeholder = "Default";
+          labelInput.placeholder = t("profile_name_placeholder");
           labelInput.dataset.field = "label";
           labelWrap.append(labelLabel, labelInput);
 
           const usernameWrap = document.createElement("div");
           const usernameLabel = document.createElement("label");
-          usernameLabel.textContent = "Username";
+          usernameLabel.textContent = t("username_label");
           const usernameInput = document.createElement("input");
           usernameInput.value = profile.username;
-          usernameInput.placeholder = "username";
+          usernameInput.placeholder = t("username_placeholder");
           usernameInput.dataset.field = "username";
           usernameWrap.append(usernameLabel, usernameInput);
 
           const passwordWrap = document.createElement("div");
           passwordWrap.className = "full";
           const passwordLabel = document.createElement("label");
-          passwordLabel.textContent = "Password";
+          passwordLabel.textContent = t("password_label");
           const passwordInput = document.createElement("input");
           passwordInput.type = "password";
           passwordInput.value = profile.password;
-          passwordInput.placeholder = "password";
+          passwordInput.placeholder = t("password_placeholder");
           passwordInput.dataset.field = "password";
           passwordWrap.append(passwordLabel, passwordInput);
 
           grid.append(labelWrap, usernameWrap, passwordWrap);
           card.append(header, grid);
           profileList.appendChild(card);
+        }
+      }
+
+      function refreshProfilePanelText() {
+        const server = selectedServer();
+        profileServerBadge.textContent = server ? server.name : t("no_server");
+        profilePanelCopy.textContent = server
+          ? t("manage_saved_credentials_for_server", { serverName: server.name })
+          : t("select_server_manage_profiles");
+        addProfileButton.disabled = !server;
+        saveProfilesButton.disabled = !server;
+      }
+
+      function localizeRenderedProfileCards() {
+        const cards = Array.from(profileList.querySelectorAll(".profile-card"));
+        if (cards.length === 0) {
+          const empty = profileList.querySelector(".info-item");
+          if (empty) {
+            empty.textContent = selectedServer() ? t("no_saved_profiles_add_one") : t("no_server_selected");
+          }
+          return;
+        }
+
+        for (const card of cards) {
+          const labelInput = card.querySelector('[data-field="label"]');
+          const title = card.querySelector(".profile-card-title");
+          if (title) {
+            title.textContent = labelInput?.value.trim() || t("profile_title_fallback");
+          }
+
+          const defaultText = card.querySelector(".profile-default span");
+          if (defaultText) {
+            defaultText.textContent = t("profile_default_label");
+          }
+
+          const removeButton = card.querySelector("button");
+          if (removeButton) {
+            removeButton.textContent = t("profile_remove_button");
+          }
+
+          const labels = Array.from(card.querySelectorAll("label"));
+          if (labels[1]) {
+            labels[1].textContent = t("profile_name_label");
+          }
+          if (labels[2]) {
+            labels[2].textContent = t("username_label");
+          }
+          if (labels[3]) {
+            labels[3].textContent = t("password_label");
+          }
+
+          if (labelInput) {
+            labelInput.placeholder = t("profile_name_placeholder");
+          }
+          const usernameInput = card.querySelector('[data-field="username"]');
+          if (usernameInput) {
+            usernameInput.placeholder = t("username_placeholder");
+          }
+          const passwordInput = card.querySelector('[data-field="password"]');
+          if (passwordInput) {
+            passwordInput.placeholder = t("password_placeholder");
+          }
         }
       }
 
@@ -2448,7 +2930,7 @@
 
         const payload = collectProfileDrafts();
         if (payload.profiles.some((profile) => !profile.label || !profile.username || !profile.password)) {
-          const error = new Error("Each profile requires a name, username, and password.");
+          const error = new Error(t("invalid_login_profile"));
           error.code = "INVALID_LOGIN_PROFILE";
           throw error;
         }
@@ -2461,7 +2943,15 @@
         defaultLoginProfileId = data.defaultProfileId || loginProfiles[0]?.id || "";
         currentLoginProfileId = defaultLoginProfileId;
         renderLoginProfiles();
-        setStatusMessage(`Saved ${loginProfiles.length} login profile${loginProfiles.length === 1 ? "" : "s"} for ${server.id}.`, "ok");
+        setStatusKey(
+          "saved_login_profiles",
+          {
+            count: loginProfiles.length,
+            profileWord: loginProfiles.length === 1 ? t("login_profile_singular") : t("login_profile_plural"),
+            serverId: server.id
+          },
+          "ok"
+        );
       }
 
       async function loadPromptPreview({
@@ -2498,6 +2988,7 @@
         if (profileId) {
           params.set("profileId", profileId);
         }
+        params.set("frontendLocale", currentLocale);
         if (objectiveInput.value.trim()) {
           params.set("objective", objectiveInput.value.trim());
         }
@@ -2536,7 +3027,7 @@
         await loadLoginProfiles();
         if (loginProfiles.length === 0) {
           setActivePage("settings");
-          setStatusMessage("No saved login profiles for this server. Add one in Settings first.", "warn");
+          setStatusKey("no_saved_login_profiles", {}, "warn");
           return;
         }
 
@@ -2556,7 +3047,7 @@
         currentLaunchMode = launchMode;
         currentLoginProfileId = profileId || "";
         setActivePage("controls");
-        resetAgentOutput("Starting agent...");
+        resetAgentOutput(t("starting_agent"));
         reconnectTerminalStreams();
 
         await startSession();
@@ -2580,17 +3071,27 @@
             launchMode,
             loginProfileId: launchMode === "existing-login" ? profileId : "",
             objective,
+            frontendLocale: currentLocale,
             prompt
           })
         });
 
         updateInteractiveAgentUi(data.session);
         await loadInteractiveAgentSessions();
-        resetAgentOutput(`Connecting to interactive agent ${data.session.target}...`);
+        resetAgentOutput(t("connecting_interactive_agent", { target: data.session.target }));
         reconnectTerminalStreams();
         agentTerminal.focus();
-        setStatusMessage(
-          `${data.session.reused ? "Reused" : "Started"} agent ${data.session.target}${data.session.autoplay?.enabled ? " with autoplay." : prompt ? " and sent prompt." : "."}`,
+        setStatusKey(
+          "agent_status_message",
+          {
+            action: t(data.session.reused ? "agent_action_reused" : "agent_action_started"),
+            target: data.session.target,
+            suffix: data.session.autoplay?.enabled
+              ? t("agent_status_suffix_autoplay")
+              : prompt
+                ? t("agent_status_suffix_prompt")
+                : t("agent_status_suffix_plain")
+          },
           "ok"
         );
       }
@@ -2606,9 +3107,9 @@
 
         await loadInteractiveAgentSessions();
         updateInteractiveAgentUi(null);
-        resetAgentOutput("Agent terminal is idle.");
+        resetAgentOutput(t("agent_terminal_idle"));
         reconnectTerminalStreams();
-        setStatusMessage(`Stopped interactive agent ${data.session.target}.`, "warn");
+        setStatusKey("stopped_interactive_agent", { target: data.session.target }, "warn");
       }
 
       function serverFormValue() {
@@ -2663,29 +3164,42 @@
         formHost.value = "";
         formPort.value = "";
         formNotes.value = "";
-        customModeBadge.textContent = "New Server";
+        customModeBadge.textContent = t("new_server_badge");
         setServerFormState({
           editable: true,
           lockId: false
         });
       }
 
-      function syncFormToSelection() {
+      function updateServerContextUi() {
         const server = selectedServer();
         if (!server) {
-          resetServerForm();
-          serverHint.textContent = "";
-          refreshDashboardSummary();
+          serverHint.textContent = t("no_server_selected");
+          if (!formId.value.trim()) {
+            customModeBadge.textContent = t("new_server_badge");
+          }
           return;
         }
 
         serverHint.textContent = `${server.encoding} / ${server.sendMode} / tmux ${server.tmuxSession || "0"}`;
+        customModeBadge.textContent = server.isBuiltIn ? t("built_in_server_badge") : t("custom_server_badge");
+      }
+
+      function syncFormToSelection() {
+        const server = selectedServer();
+        if (!server) {
+          resetServerForm();
+          updateServerContextUi();
+          refreshDashboardSummary();
+          return;
+        }
+
         formId.value = server.id || "";
         formName.value = server.name || "";
         formHost.value = server.host || "";
         formPort.value = server.port || "";
         formNotes.value = server.notes || "";
-        customModeBadge.textContent = server.isBuiltIn ? "Built-in Server" : "Custom Server";
+        updateServerContextUi();
         setServerFormState({
           editable: true,
           lockId: true
@@ -2699,7 +3213,7 @@
 
         if (action === "new") {
           resetServerForm();
-          setStatusMessage("Prepared empty custom server form.", "neutral");
+          setStatusKey("prepared_empty_custom_server_form", {}, "neutral");
           formId.focus();
           return;
         }
@@ -2707,26 +3221,26 @@
         syncFormToSelection();
 
         if (!server) {
-          setStatusMessage("Select a server first.", "warn");
+          setStatusKey("select_server_first", {}, "warn");
           return;
         }
 
         if (action === "remove") {
-          setStatusMessage(`Ready to remove server ${server.id}.`, "warn");
+          setStatusKey("ready_to_remove_server", { serverId: server.id }, "warn");
           deleteServerButton.focus();
           return;
         }
 
-        setStatusMessage(`Editing server ${server.id}.`, "neutral");
+        setStatusKey("editing_server", { serverId: server.id }, "neutral");
         formName.focus();
       }
 
       function syncAgentSelection() {
         const agent = selectedAgent();
         if (!agent) {
-          agentSettingsBadge.textContent = "No Agent";
-          agentHint.textContent = "No agent definitions loaded.";
-          agentProfileHint.textContent = "default";
+          agentSettingsBadge.textContent = t("no_agent");
+          agentHint.textContent = t("no_agent_definitions_loaded");
+          agentProfileHint.textContent = t("default_value");
           startAgentButton.disabled = true;
           testAgentButton.disabled = true;
           reloadPromptButton.disabled = true;
@@ -2761,7 +3275,7 @@
         for (const server of servers) {
           const option = document.createElement("option");
           option.value = server.id;
-          option.textContent = `${server.name}${server.isBuiltIn ? "" : " [custom]"} (${server.host}:${server.port})`;
+          option.textContent = `${server.name}${server.isBuiltIn ? "" : t("server_custom_suffix")} (${server.host}:${server.port})`;
           serverSelect.appendChild(option);
         }
 
@@ -2843,7 +3357,7 @@
         });
 
         currentTarget = data.target;
-        setStatusMessage(data.reused ? "Reused existing tmux window." : "Started new tmux window.", "ok");
+        setStatusKey(data.reused ? "reused_existing_tmux_window" : "started_new_tmux_window", {}, "ok");
         reconnectTerminalStreams();
         refreshDashboardSummary();
         await refreshOutput();
@@ -2873,7 +3387,11 @@
           })
         });
 
-        setStatusMessage(`Login command sent to ${data.target} using ${data.profileLabel || data.profileId}.`, "ok");
+        setStatusKey(
+          "login_command_sent",
+          { target: data.target, profileLabel: data.profileLabel || data.profileId },
+          "ok"
+        );
         await new Promise((resolve) => setTimeout(resolve, data.recommendedRefreshDelayMs || 0));
         await refreshOutput();
         await loadPromptPreview({
@@ -2885,7 +3403,7 @@
 
       async function refreshOutput() {
         if (!currentTarget) {
-          outputTerminal.setPlaceholder("Start a session to view tmux output.");
+          outputTerminal.setPlaceholder(t("output_terminal_placeholder"));
           refreshDashboardSummary();
           return;
         }
@@ -2908,8 +3426,13 @@
         const data = await api(`/api/agents/${encodeURIComponent(agent.id)}/test`, {
           method: "POST"
         });
-        setStatusMessage(
-          `${agent.id}: ${data.available ? "available" : "unavailable"}${data.detail ? ` / ${data.detail}` : ""}`,
+        setStatusKey(
+          "agent_test_status",
+          {
+            agentId: agent.id,
+            availability: t(data.available ? "agent_available" : "agent_unavailable"),
+            detailSuffix: data.detail ? ` / ${data.detail}` : ""
+          },
           data.available ? "ok" : "warn"
         );
       }
@@ -2924,7 +3447,7 @@
           method,
           body: JSON.stringify(payload)
         });
-        setStatusMessage(`Saved server ${data.server.id}.`, "ok");
+        setStatusKey("saved_server", { serverId: data.server.id }, "ok");
         await loadServers();
         serverSelect.value = data.server.id;
         writeStoredValue(selectedServerStorageKey, data.server.id);
@@ -2935,7 +3458,7 @@
       async function deleteServer() {
         const selected = selectedServer();
         if (!selected) {
-          const error = new Error("Select a server to delete.");
+          const error = new Error(t("select_server_to_delete"));
           error.code = "SERVER_REQUIRED";
           throw error;
         }
@@ -2944,7 +3467,7 @@
           method: "DELETE"
         });
 
-        setStatusMessage(`Deleted server ${selected.id}.`, "warn");
+        setStatusKey("deleted_server", { serverId: selected.id }, "warn");
         await loadServers();
         currentTarget = "";
         resetServerForm();
@@ -2967,6 +3490,12 @@
       });
 
       themeToggleButton.addEventListener("click", toggleTheme);
+      localeSelect.addEventListener("change", () => {
+        setLocale(localeSelect.value);
+        if (promptMatchesSuggested()) {
+          loadPromptPreview({ force: true }).catch(setStatusFromError);
+        }
+      });
 
       decreaseOutputFontButton.addEventListener("click", () => {
         setOutputFontSize(outputFontSize - 1);
@@ -3006,7 +3535,7 @@
       clearPromptButton.addEventListener("click", () => {
         promptInput.value = "";
         lastSuggestedPrompt = "";
-        setStatusMessage("Cleared prompt override.", "neutral");
+        setStatusKey("cleared_prompt_override", {}, "neutral");
       });
       objectiveInput.addEventListener("change", () => {
         if (promptMatchesSuggested()) {
@@ -3042,7 +3571,7 @@
           return;
         }
         const draft = createProfileDraft({
-          label: `Profile ${loginProfiles.length + 1}`,
+          label: t("profile_label_number", { number: loginProfiles.length + 1 }),
           isDefault: loginProfiles.length === 0
         });
         if (loginProfiles.length === 0) {
@@ -3055,7 +3584,7 @@
 
       newServerButton.addEventListener("click", () => {
         resetServerForm();
-        setStatusMessage("Prepared empty custom server form.", "neutral");
+        setStatusKey("prepared_empty_custom_server_form", {}, "neutral");
       });
       sidebarNewServerButton.addEventListener("click", () => openServerSettings("new"));
       sidebarEditServerButton.addEventListener("click", () => openServerSettings("edit"));
@@ -3081,13 +3610,14 @@
       });
 
       applySidebarState();
+      setLocale(currentLocale, { persist: false });
       setInfoDrawerOpen(false);
       setTheme(currentTheme);
       setOutputFontSize(outputFontSize);
       setAgentFontSize(agentFontSize);
       setActivePage(currentPage);
       setStatusMessage("", "neutral");
-      outputTerminal.setPlaceholder("Start a session to view tmux output.");
+      outputTerminal.setPlaceholder(t("output_terminal_placeholder"));
       resetAgentOutput();
       refreshDashboardSummary();
 

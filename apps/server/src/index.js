@@ -2973,6 +2973,32 @@ function normalizeAgentObjective(objective) {
   return String(objective || "").trim();
 }
 
+function normalizeFrontendLocale(locale) {
+  const normalized = String(locale || "").trim().toLowerCase();
+  if (normalized === "zh" || normalized === "zh-cn" || normalized === "zh-hans") {
+    return {
+      id: "zh",
+      label: "Simplified Chinese (简体中文)",
+      replyLanguage: "Simplified Chinese"
+    };
+  }
+
+  return {
+    id: "en",
+    label: "English",
+    replyLanguage: "English"
+  };
+}
+
+function buildFrontendLanguageSection(frontendLocale) {
+  const preference = normalizeFrontendLocale(frontendLocale);
+  return [
+    "Frontend language preference:",
+    `- Selected UI language: ${preference.label}.`,
+    `- When replying, summarizing progress, or asking follow-up questions in the frontend, use ${preference.replyLanguage} unless the user explicitly asks to switch languages.`
+  ].join("\n");
+}
+
 function buildAgentObjectiveSection(objective) {
   const normalizedObjective = normalizeAgentObjective(objective);
   if (!normalizedObjective) {
@@ -2986,16 +3012,23 @@ function buildAgentObjectiveSection(objective) {
   ].join("\n");
 }
 
-function injectAgentObjective(prompt, objective) {
+function injectPromptSection(prompt, section) {
   const basePrompt = String(prompt || "").trim();
-  const objectiveSection = buildAgentObjectiveSection(objective);
-  if (!basePrompt || !objectiveSection) {
+  const normalizedSection = String(section || "").trim();
+  if (!basePrompt || !normalizedSection) {
     return basePrompt;
   }
-  if (basePrompt.includes(objectiveSection)) {
+  if (basePrompt.includes(normalizedSection)) {
     return basePrompt;
   }
-  return `${basePrompt}\n\n${objectiveSection}`;
+  return `${basePrompt}\n\n${normalizedSection}`;
+}
+
+function injectPromptPreferences(prompt, { objective = "", frontendLocale = "en" } = {}) {
+  let result = String(prompt || "").trim();
+  result = injectPromptSection(result, buildFrontendLanguageSection(frontendLocale));
+  result = injectPromptSection(result, buildAgentObjectiveSection(objective));
+  return result;
 }
 
 async function buildAgentPrompt({
@@ -3005,7 +3038,8 @@ async function buildAgentPrompt({
   target,
   launchMode = "existing-login",
   loginProfile = null,
-  objective = ""
+  objective = "",
+  frontendLocale = "en"
 }) {
   const guideFiles = await resolvePromptGuideFiles(server?.id || session?.serverId || "");
   const helperScripts = [
@@ -3015,6 +3049,8 @@ async function buildAgentPrompt({
   ].join(", ");
   const resolvedLaunchMode = normalizeLaunchMode(launchMode);
   const objectiveSection = buildAgentObjectiveSection(objective);
+  const languageSection = buildFrontendLanguageSection(frontendLocale);
+  const languagePreference = normalizeFrontendLocale(frontendLocale);
   const guideInstructions = [
     ...guideFiles.map(({ label, displayPath }) => `- Read ${displayPath} (${label}) before acting.`),
     "- Use walkthrough files under ./walkthrough/ instead of rediscovering known routes.",
@@ -3046,7 +3082,7 @@ async function buildAgentPrompt({
         ].join("\n");
 
   if (agentDefinition.promptTemplate) {
-    return injectAgentObjective(
+    return injectPromptPreferences(
       agentDefinition.promptTemplate
       .replaceAll("{serverName}", server?.name || session?.serverId || target)
       .replaceAll("{serverId}", server?.id || session?.serverId || "")
@@ -3058,13 +3094,18 @@ async function buildAgentPrompt({
       .replaceAll("{guideInstructions}", guideInstructions)
       .replaceAll("{loginProfileLabel}", loginProfile?.label || "")
       .replaceAll("{loginProfileUsername}", loginProfile?.username || "")
+      .replaceAll("{frontendLanguage}", languagePreference.label)
+      .replaceAll("{languageInstructions}", languageSection)
       .replaceAll("{objective}", normalizeAgentObjective(objective))
       .replaceAll("{objectiveInstructions}", objectiveSection),
-      objective
+      {
+        objective,
+        frontendLocale
+      }
     );
   }
 
-  return injectAgentObjective(
+  return injectPromptPreferences(
     [
     "You are operating an existing MUD session through tmux.",
     "Settings:",
@@ -3072,6 +3113,7 @@ async function buildAgentPrompt({
     `- Server: ${server?.name || session?.serverId || "unknown"} (${server?.host || "unknown"}:${server?.port || "unknown"})`,
     `- Encoding: ${session?.encoding || server?.encoding || "UTF-8"}`,
     server?.notes ? `Server runtime notes: ${server.notes}` : "",
+    languageSection,
     objectiveSection,
     "Basic guidelines:",
     resolvedLaunchMode === "new-user"
@@ -3092,7 +3134,10 @@ async function buildAgentPrompt({
   ]
     .filter(Boolean)
     .join("\n\n"),
-    objective
+    {
+      objective,
+      frontendLocale
+    }
   );
 }
 
@@ -3129,7 +3174,7 @@ async function testAgentDefinition(agentDefinition) {
   }
 }
 
-async function startAgentRun({ agentId, agentProfileId, serverId, target, prompt, launchMode, loginProfileId, objective }) {
+async function startAgentRun({ agentId, agentProfileId, serverId, target, prompt, launchMode, loginProfileId, objective, frontendLocale }) {
   if (!agentId) {
     throw createError("agentId is required", "MISSING_AGENT_ID", 400);
   }
@@ -3148,7 +3193,7 @@ async function startAgentRun({ agentId, agentProfileId, serverId, target, prompt
       : null;
   const resolvedPrompt =
     typeof prompt === "string" && prompt.trim()
-      ? injectAgentObjective(prompt, objective)
+      ? injectPromptPreferences(prompt, { objective, frontendLocale })
       : await buildAgentPrompt({
           agentDefinition,
           server,
@@ -3156,7 +3201,8 @@ async function startAgentRun({ agentId, agentProfileId, serverId, target, prompt
           target,
           launchMode: resolvedLaunchMode,
           loginProfile,
-          objective
+          objective,
+          frontendLocale
         });
 
   const { args, selectedProfile } = await loadResolvedAgentArgs(agentDefinition, {
@@ -3764,6 +3810,7 @@ async function handleApi(request, response, url) {
     const launchMode = normalizeLaunchMode(body.launchMode);
     const loginProfileId = String(body.loginProfileId || body.profileId || "").trim();
     const objective = normalizeAgentObjective(body.objective);
+    const frontendLocale = String(body.frontendLocale || body.locale || "").trim() || "en";
 
     if (isOpenClawInteractiveAgent(agentDefinition)) {
       if (!target) {
@@ -3777,7 +3824,7 @@ async function handleApi(request, response, url) {
           : null;
       const prompt =
         typeof body.prompt === "string" && body.prompt.trim()
-          ? injectAgentObjective(body.prompt, objective)
+          ? injectPromptPreferences(body.prompt, { objective, frontendLocale })
           : await buildAgentPrompt({
               agentDefinition,
               server,
@@ -3785,7 +3832,8 @@ async function handleApi(request, response, url) {
               target,
               launchMode,
               loginProfile,
-              objective
+              objective,
+              frontendLocale
             });
 
       await startOpenClawAutoplayWorker({
@@ -3813,7 +3861,11 @@ async function handleApi(request, response, url) {
     }
 
     if (typeof body.prompt === "string" && body.prompt.trim()) {
-      await sendInteractivePrompt(agentDefinition, interactiveSession.target, body.prompt);
+      await sendInteractivePrompt(
+        agentDefinition,
+        interactiveSession.target,
+        injectPromptPreferences(body.prompt, { objective, frontendLocale })
+      );
     }
     return json(response, 201, {
       session: interactiveSession
@@ -3919,6 +3971,7 @@ async function handleApi(request, response, url) {
     const launchMode = normalizeLaunchMode(url.searchParams.get("launchMode"));
     const loginProfileId = url.searchParams.get("profileId") || "";
     const objective = normalizeAgentObjective(url.searchParams.get("objective"));
+    const frontendLocale = String(url.searchParams.get("frontendLocale") || url.searchParams.get("locale") || "").trim() || "en";
 
     if (!target) {
       throw createError("target or serverId with a windowName is required", "MISSING_TARGET", 400);
@@ -3942,7 +3995,8 @@ async function handleApi(request, response, url) {
       target,
       launchMode,
       loginProfile,
-      objective
+      objective,
+      frontendLocale
     });
 
     return json(response, 200, {
@@ -3951,6 +4005,7 @@ async function handleApi(request, response, url) {
       target,
       launchMode,
       profileId: loginProfile?.id || "",
+      frontendLocale,
       prompt
     });
   }
