@@ -1534,6 +1534,10 @@ async function resolveOpenClawInteractiveSessionKey(agentDefinition) {
 
 async function abortOpenClawInteractiveSession(agentDefinition) {
   const sessionKey = await resolveOpenClawInteractiveSessionKey(agentDefinition);
+  return abortOpenClawChatSession({ sessionKey });
+}
+
+async function abortOpenClawChatSession({ sessionKey, runId = "" }) {
   if (!sessionKey) {
     return {
       backend: "openclaw",
@@ -1543,34 +1547,15 @@ async function abortOpenClawInteractiveSession(agentDefinition) {
     };
   }
 
-  const command = resolveExecutable("openclaw");
-  const { stdout } = await run(command, [
-    "gateway",
-    "call",
-    "chat.abort",
-    "--params",
-    JSON.stringify({ sessionKey }),
-    "--json"
-  ]);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(stdout);
-  } catch (error) {
-    throw createError(
-      `Unable to parse OpenClaw abort output: ${error.message}`,
-      "OPENCLAW_ABORT_PARSE_FAILED",
-      500,
-      {
-        sessionKey
-      }
-    );
-  }
+  const params = runId ? { sessionKey, runId } : { sessionKey };
+  const { payload } = await runOpenClawGatewayCall("chat.abort", params, {
+    timeoutMs: 10000
+  });
 
   return {
     backend: "openclaw",
-    aborted: Boolean(parsed?.aborted),
-    runIds: Array.isArray(parsed?.runIds) ? parsed.runIds : [],
+    aborted: Boolean(payload?.aborted),
+    runIds: Array.isArray(payload?.runIds) ? payload.runIds : [],
     sessionKey
   };
 }
@@ -1704,7 +1689,7 @@ async function buildOpenClawAutoplayContinuationPrompt(worker) {
   ].join("\n\n");
 }
 
-async function runOpenClawGatewayCall(method, params, options = {}) {
+function spawnOpenClawGatewayCall(method, params, options = {}) {
   const command = resolveExecutable("openclaw");
   const args = [
     "gateway",
@@ -1736,7 +1721,7 @@ async function runOpenClawGatewayCall(method, params, options = {}) {
     stderr += chunk.toString("utf8");
   });
 
-  const result = await new Promise((resolve, reject) => {
+  const completion = new Promise((resolve, reject) => {
     child.on("error", reject);
     child.on("close", (code, signal) => {
       if (code === 0) {
@@ -1766,26 +1751,55 @@ async function runOpenClawGatewayCall(method, params, options = {}) {
       error.stderr = stderr;
       reject(error);
     });
+  }).then((result) => {
+    let payload;
+    try {
+      payload = JSON.parse(String(result.stdout || "{}"));
+    } catch (error) {
+      throw createError(
+        `Unable to parse OpenClaw ${method} output: ${error.message}`,
+        "OPENCLAW_GATEWAY_PARSE_FAILED",
+        500,
+        {
+          method
+        }
+      );
+    }
+
+    return {
+      payload,
+      child
+    };
   });
 
-  let payload;
-  try {
-    payload = JSON.parse(String(result.stdout || "{}"));
-  } catch (error) {
-    throw createError(
-      `Unable to parse OpenClaw ${method} output: ${error.message}`,
-      "OPENCLAW_GATEWAY_PARSE_FAILED",
-      500,
-      {
-        method
-      }
-    );
+  return {
+    child,
+    completion
+  };
+}
+
+async function runOpenClawGatewayCall(method, params, options = {}) {
+  const { completion } = spawnOpenClawGatewayCall(method, params, options);
+  return await completion;
+}
+
+async function waitForOpenClawRunResult(runId, timeoutMs = 5000) {
+  const normalizedRunId = String(runId || "").trim();
+  if (!normalizedRunId) {
+    return null;
   }
 
-  return {
-    payload,
-    child
-  };
+  const { payload } = await runOpenClawGatewayCall(
+    "agent.wait",
+    {
+      runId: normalizedRunId,
+      timeoutMs
+    },
+    {
+      timeoutMs: Math.max(timeoutMs + 2000, 5000)
+    }
+  );
+  return payload && typeof payload === "object" ? payload : null;
 }
 
 async function loadOpenClawChatHistory(sessionKey, limit = 8) {
@@ -1837,11 +1851,17 @@ async function stopOpenClawAutoplayWorker(worker, reason, options = {}) {
     autoplayStopped: true
   };
   if (options.abortSession !== false && worker.sessionKey) {
-    backendStop = await abortOpenClawInteractiveSession({
-      interactiveArgs: ["--session", worker.rawSessionKey || worker.sessionKey],
-      command: "openclaw"
+    backendStop = await abortOpenClawChatSession({
+      sessionKey: worker.sessionKey,
+      runId: worker.currentRunId || ""
     }).catch(() => backendStop);
     backendStop.autoplayStopped = true;
+    if (worker.currentRunId) {
+      backendStop.waitResult = await waitForOpenClawRunResult(
+        worker.currentRunId,
+        Number(options.waitTimeoutMs || 5000)
+      ).catch(() => null);
+    }
   }
 
   updateOpenClawAutoplayWorker(worker, {
@@ -1849,7 +1869,8 @@ async function stopOpenClawAutoplayWorker(worker, reason, options = {}) {
     stopRequested: true,
     stopReason: reason || worker.stopReason || "Stopped.",
     stoppedAt: new Date().toISOString(),
-    currentProcess: null
+    currentProcess: null,
+    currentRunId: ""
   });
 
   return backendStop;
@@ -1894,64 +1915,35 @@ async function runOpenClawAutoplayLoop(worker) {
           : await buildOpenClawAutoplayContinuationPrompt(worker);
 
       const idempotencyKey = `mud-agent-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-      const timeoutMs = worker.turnTimeoutMs + 30000;
-      const child = spawn(resolveExecutable("openclaw"), [
-        "gateway",
-        "call",
-        "agent",
-        "--params",
-        JSON.stringify({
+      const sendCall = spawnOpenClawGatewayCall(
+        "chat.send",
+        {
           sessionKey: worker.sessionKey,
           message: prompt,
           deliver: false,
-          timeout: Math.ceil(worker.turnTimeoutMs / 1000),
           idempotencyKey
-        }),
-        "--expect-final",
-        "--json",
-        "--timeout",
-        String(timeoutMs)
-      ], {
-        cwd: repoRoot,
-        env: process.env,
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-
-      let stdout = "";
-      let stderr = "";
-      child.stdout.on("data", (chunk) => {
-        stdout += chunk.toString("utf8");
-      });
-      child.stderr.on("data", (chunk) => {
-        stderr += chunk.toString("utf8");
-      });
+        },
+        {
+          timeoutMs: 15000
+        }
+      );
 
       updateOpenClawAutoplayWorker(worker, {
         status: "running",
-        currentProcess: child,
+        currentProcess: sendCall.child,
+        currentRunId: "",
         lastPrompt: prompt
       });
 
-      await new Promise((resolve, reject) => {
-        child.on("error", reject);
-        child.on("close", (code) => {
-          if (worker.stopRequested) {
-            resolve();
-            return;
-          }
-          if (code === 0) {
-            resolve();
-            return;
-          }
-          reject(
-            createError(
-              `OpenClaw autoplay turn failed: ${String(stderr || stdout || `exit code ${code}`).trim()}`,
-              "OPENCLAW_AUTOPLAY_TURN_FAILED",
-              500
-            )
-          );
-        });
-      });
+      let sendPayload;
+      try {
+        ({ payload: sendPayload } = await sendCall.completion);
+      } catch (error) {
+        if (worker.stopRequested) {
+          break;
+        }
+        throw error;
+      }
 
       updateOpenClawAutoplayWorker(worker, {
         currentProcess: null
@@ -1959,6 +1951,90 @@ async function runOpenClawAutoplayLoop(worker) {
 
       if (worker.stopRequested) {
         break;
+      }
+
+      const runId = String(sendPayload?.runId || "").trim();
+      const sendStatus = String(sendPayload?.status || "").trim().toLowerCase();
+      if (!runId || !["started", "in_flight", "ok"].includes(sendStatus)) {
+        throw createError(
+          `OpenClaw autoplay turn did not start cleanly (status: ${sendStatus || "unknown"})`,
+          "OPENCLAW_AUTOPLAY_START_FAILED",
+          500,
+          {
+            sessionKey: worker.sessionKey,
+            runId
+          }
+        );
+      }
+
+      const waitCall = spawnOpenClawGatewayCall(
+        "agent.wait",
+        {
+          runId,
+          timeoutMs: worker.turnTimeoutMs
+        },
+        {
+          timeoutMs: worker.turnTimeoutMs + 35000
+        }
+      );
+      updateOpenClawAutoplayWorker(worker, {
+        currentProcess: waitCall.child,
+        currentRunId: runId
+      });
+
+      let waitPayload;
+      try {
+        ({ payload: waitPayload } = await waitCall.completion);
+      } catch (error) {
+        if (worker.stopRequested) {
+          break;
+        }
+        throw error;
+      }
+
+      updateOpenClawAutoplayWorker(worker, {
+        currentProcess: null
+      });
+
+      if (worker.stopRequested) {
+        break;
+      }
+
+      const waitStatus = String(waitPayload?.status || "").trim().toLowerCase();
+      if (waitStatus === "timeout") {
+        await abortOpenClawChatSession({
+          sessionKey: worker.sessionKey,
+          runId
+        }).catch(() => null);
+        await waitForOpenClawRunResult(runId, 5000).catch(() => null);
+        throw createError(
+          "OpenClaw autoplay turn timed out.",
+          "OPENCLAW_AUTOPLAY_TURN_TIMEOUT",
+          500,
+          {
+            runId
+          }
+        );
+      }
+      if (waitStatus === "error") {
+        throw createError(
+          `OpenClaw autoplay turn failed: ${String(waitPayload?.error || "agent.wait returned error")}`,
+          "OPENCLAW_AUTOPLAY_TURN_FAILED",
+          500,
+          {
+            runId
+          }
+        );
+      }
+      if (waitStatus && waitStatus !== "ok") {
+        throw createError(
+          `OpenClaw autoplay turn ended unexpectedly with status: ${waitStatus}`,
+          "OPENCLAW_AUTOPLAY_TURN_FAILED",
+          500,
+          {
+            runId
+          }
+        );
       }
 
       const messages = await loadOpenClawChatHistory(worker.sessionKey, 10).catch(() => []);
@@ -1977,7 +2053,8 @@ async function runOpenClawAutoplayLoop(worker) {
         lastMudOutput: latestMudOutput,
         lastMudSnapshot: latestMudSnapshot,
         lastTurnCompletedAt: turnCompletedAt,
-        repeatedSnapshotCount: Number(worker.repeatedSnapshotCount || 0)
+        repeatedSnapshotCount: Number(worker.repeatedSnapshotCount || 0),
+        currentRunId: ""
       });
       if (detectedStop) {
         updateOpenClawAutoplayWorker(worker, {
@@ -1985,7 +2062,8 @@ async function runOpenClawAutoplayLoop(worker) {
           stopRequested: true,
           stopReason: detectedStop.reason,
           stoppedAt: new Date().toISOString(),
-          currentProcess: null
+          currentProcess: null,
+          currentRunId: ""
         });
         return;
       }
@@ -2006,7 +2084,8 @@ async function runOpenClawAutoplayLoop(worker) {
       stopRequested: true,
       stopReason: worker.stopReason || (worker.turnCount >= worker.maxTurns ? "Reached max turns." : "Autoplay stopped."),
       stoppedAt: new Date().toISOString(),
-      currentProcess: null
+      currentProcess: null,
+      currentRunId: ""
     });
   } catch (error) {
     updateOpenClawAutoplayWorker(worker, {
@@ -2015,6 +2094,7 @@ async function runOpenClawAutoplayLoop(worker) {
       stopReason: "Autoplay failed.",
       stoppedAt: new Date().toISOString(),
       currentProcess: null,
+      currentRunId: "",
       lastError: error.message
     });
   }
@@ -2063,6 +2143,7 @@ async function startOpenClawAutoplayWorker({
     startedAt: new Date().toISOString(),
     stoppedAt: "",
     currentProcess: null,
+    currentRunId: "",
     initialPrompt: String(prompt || ""),
     lastAssistantReply: "",
     lastMudOutput: "",
