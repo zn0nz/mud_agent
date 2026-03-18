@@ -1,3 +1,11 @@
+<p align="center">
+  <a href="./README.md">English</a> |
+  <a href="./README_CN.md">中文</a> |
+  <a href="./README_JA.md">日本語</a> |
+  <a href="./README_FR.md">Français</a> |
+  <a href="./README_ES.md">Español</a>
+</p>
+
 ![aardwolf_play_sample](https://github.com/user-attachments/assets/e397507d-028f-46d3-a561-9d91730100bb)
 
 # mud-agent
