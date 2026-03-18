@@ -1238,7 +1238,25 @@
                     <div>
                       <div class="panel-title">Agent Monitor</div>
                     </div>
-                    <span id="agentRunTarget" class="readonly-badge">No active run</span>
+                    <div class="panel-actions">
+                      <button
+                        id="decreaseAgentFontButton"
+                        class="secondary small"
+                        type="button"
+                        aria-label="Decrease agent monitor font size"
+                      >
+                        A-
+                      </button>
+                      <button
+                        id="increaseAgentFontButton"
+                        class="secondary small"
+                        type="button"
+                        aria-label="Increase agent monitor font size"
+                      >
+                        A+
+                      </button>
+                      <span id="agentRunTarget" class="readonly-badge">No active run</span>
+                    </div>
                   </div>
                   <div id="agentShell" class="terminal-shell"></div>
                 </div>
@@ -1353,6 +1371,8 @@
       const decreaseOutputFontButton = document.getElementById("decreaseOutputFontButton");
       const increaseOutputFontButton = document.getElementById("increaseOutputFontButton");
       const agentShell = document.getElementById("agentShell");
+      const decreaseAgentFontButton = document.getElementById("decreaseAgentFontButton");
+      const increaseAgentFontButton = document.getElementById("increaseAgentFontButton");
       const status = document.getElementById("status");
       const serverHint = document.getElementById("serverHint");
       const customModeBadge = document.getElementById("customModeBadge");
@@ -1409,10 +1429,13 @@
       let currentLoginProfileId = "";
       let isSidebarCollapsed = false;
       let outputFontSize = 14;
+      let agentFontSize = 14;
       let currentPage = "controls";
       let currentTheme = "dark";
       const sidebarStorageKey = "mud-agent.sidebar-collapsed";
-      const outputFontStorageKey = "mud-agent.tmux-output-font-size";
+      const outputFontStorageKey = "mud-agent.game-monitor-font-size";
+      const legacyOutputFontStorageKey = "mud-agent.tmux-output-font-size";
+      const agentFontStorageKey = "mud-agent.agent-monitor-font-size";
       const themeStorageKey = "mud-agent.theme";
       const pageStorageKey = "mud-agent.page";
       const selectedServerStorageKey = "mud-agent.selected-server";
@@ -1539,18 +1562,43 @@
         });
       }
 
+      function applyTerminalFontSize({ shell, decreaseButton, increaseButton, terminal, size }) {
+        shell.style.setProperty("--tmux-font-size", `${size}px`);
+        decreaseButton.disabled = size <= minOutputFontSize;
+        increaseButton.disabled = size >= maxOutputFontSize;
+        terminal.setFontSize(size);
+      }
+
       function applyOutputFontSize() {
-        outputShell.style.setProperty("--tmux-font-size", `${outputFontSize}px`);
-        decreaseOutputFontButton.disabled = outputFontSize <= minOutputFontSize;
-        increaseOutputFontButton.disabled = outputFontSize >= maxOutputFontSize;
-        outputTerminal.setFontSize(outputFontSize);
-        agentTerminal.setFontSize(outputFontSize);
+        applyTerminalFontSize({
+          shell: outputShell,
+          decreaseButton: decreaseOutputFontButton,
+          increaseButton: increaseOutputFontButton,
+          terminal: outputTerminal,
+          size: outputFontSize
+        });
       }
 
       function setOutputFontSize(size) {
         outputFontSize = clamp(size, minOutputFontSize, maxOutputFontSize);
         writeStoredValue(outputFontStorageKey, String(outputFontSize));
         applyOutputFontSize();
+      }
+
+      function applyAgentFontSize() {
+        applyTerminalFontSize({
+          shell: agentShell,
+          decreaseButton: decreaseAgentFontButton,
+          increaseButton: increaseAgentFontButton,
+          terminal: agentTerminal,
+          size: agentFontSize
+        });
+      }
+
+      function setAgentFontSize(size) {
+        agentFontSize = clamp(size, minOutputFontSize, maxOutputFontSize);
+        writeStoredValue(agentFontStorageKey, String(agentFontSize));
+        applyAgentFontSize();
       }
 
       function cssVar(name) {
@@ -1587,7 +1635,7 @@
         return String(text || "").replace(/\r/g, "");
       }
 
-      function createTerminalController({ shell, emptyMessage, onConnectionChange, onStatus }) {
+      function createTerminalController({ shell, emptyMessage, fontSize, onConnectionChange, onStatus }) {
         const terminal = new Terminal({
           allowTransparency: true,
           convertEol: true,
@@ -1595,7 +1643,7 @@
           cursorStyle: "block",
           disableStdin: true,
           fontFamily: '"IBM Plex Mono", "Consolas", monospace',
-          fontSize: outputFontSize,
+          fontSize,
           scrollback: 1000,
           theme: buildTerminalTheme()
         });
@@ -1916,15 +1964,31 @@
         return data;
       }
 
+      isSidebarCollapsed = readStoredBoolean(sidebarStorageKey, false);
+      outputFontSize = clamp(
+        readStoredNumber(outputFontStorageKey, readStoredNumber(legacyOutputFontStorageKey, 14)),
+        minOutputFontSize,
+        maxOutputFontSize
+      );
+      agentFontSize = clamp(
+        readStoredNumber(agentFontStorageKey, readStoredNumber(legacyOutputFontStorageKey, 14)),
+        minOutputFontSize,
+        maxOutputFontSize
+      );
+      currentTheme = readStoredValue(themeStorageKey) || "dark";
+      currentPage = readStoredValue(pageStorageKey) || "controls";
+
       const outputTerminal = createTerminalController({
         shell: outputShell,
         emptyMessage: "Start a session to view tmux output.",
+        fontSize: outputFontSize,
         onConnectionChange: refreshDashboardSummary,
         onStatus: setStatusMessage
       });
       const agentTerminal = createTerminalController({
         shell: agentShell,
         emptyMessage: "Agent terminal is idle.",
+        fontSize: agentFontSize,
         onConnectionChange: refreshDashboardSummary,
         onStatus: setStatusMessage
       });
@@ -2912,6 +2976,14 @@
         setOutputFontSize(outputFontSize + 1);
       });
 
+      decreaseAgentFontButton.addEventListener("click", () => {
+        setAgentFontSize(agentFontSize - 1);
+      });
+
+      increaseAgentFontButton.addEventListener("click", () => {
+        setAgentFontSize(agentFontSize + 1);
+      });
+
       serverSelect.addEventListener("change", () => {
         writeStoredValue(selectedServerStorageKey, serverSelect.value);
         syncFormToSelection();
@@ -3008,15 +3080,11 @@
         agentTerminal.disconnect();
       });
 
-      isSidebarCollapsed = readStoredBoolean(sidebarStorageKey, false);
-      outputFontSize = clamp(readStoredNumber(outputFontStorageKey, 14), minOutputFontSize, maxOutputFontSize);
-      currentTheme = readStoredValue(themeStorageKey) || "dark";
-      currentPage = readStoredValue(pageStorageKey) || "controls";
-
       applySidebarState();
       setInfoDrawerOpen(false);
       setTheme(currentTheme);
       setOutputFontSize(outputFontSize);
+      setAgentFontSize(agentFontSize);
       setActivePage(currentPage);
       setStatusMessage("", "neutral");
       outputTerminal.setPlaceholder("Start a session to view tmux output.");
