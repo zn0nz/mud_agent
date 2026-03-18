@@ -1,4 +1,4 @@
-<img width="1920" height="945" alt="87671fda2555fdab3a0d376a643e6f82" src="https://github.com/user-attachments/assets/c6225339-9d3b-4c3a-91a1-5707604cd08a" />
+![aardwolf_play_sample](https://github.com/user-attachments/assets/e397507d-028f-46d3-a561-9d91730100bb)
 
 # mud-agent
 
