@@ -2080,34 +2080,41 @@ async function stopInteractiveAgentExecution(agentDefinition, options = {}) {
   if (isOpenClawInteractiveAgent(agentDefinition)) {
     const worker = getOpenClawAutoplayWorker(agentDefinition.id);
     if (worker) {
-      return stopOpenClawAutoplayWorker(worker, options.reason || "Stopped interactive agent.", {
+      const backendStop = await stopOpenClawAutoplayWorker(worker, options.reason || "Stopped interactive agent.", {
         abortSession: options.abortSession !== false,
         finalStatus: options.finalStatus || "stopped"
       });
+      const paneStop = await stopPaneProcessGroup(options.panePid, {
+        graceMs: options.graceMs
+      });
+      return {
+        backend: "openclaw",
+        paneStop,
+        ...backendStop,
+        stopped: Boolean(
+          (backendStop.aborted || backendStop.autoplayStopped) &&
+          (paneStop.stopped || paneStop.panePid <= 0)
+        )
+      };
     }
-    return abortOpenClawInteractiveSession(agentDefinition);
-  }
-
-  const panePid = Number(options.panePid || 0);
-  const pgid = await getProcessGroupId(panePid);
-  if (!pgid) {
+    const backendStop = await abortOpenClawInteractiveSession(agentDefinition);
+    const paneStop = await stopPaneProcessGroup(options.panePid, {
+      graceMs: options.graceMs
+    });
     return {
-      backend: "process_group",
-      panePid,
-      pgid: 0,
-      signaled: false,
-      stopped: false
+      backend: "openclaw",
+      paneStop,
+      ...backendStop,
+      stopped: Boolean(backendStop.aborted && (paneStop.stopped || paneStop.panePid <= 0))
     };
   }
 
-  const termination = await terminateProcessGroup(pgid, {
-    graceMs: Number(options.graceMs || 1500)
+  const paneStop = await stopPaneProcessGroup(options.panePid, {
+    graceMs: options.graceMs
   });
   return {
     backend: "process_group",
-    panePid,
-    ...termination,
-    stopped: termination.signaled && !termination.stillRunning
+    ...paneStop
   };
 }
 
@@ -2328,6 +2335,30 @@ async function terminateProcessGroup(pgid, options = {}) {
     signaled: true,
     finalSignal: killSignal,
     stillRunning: canSignalProcessGroup(normalizedPgid)
+  };
+}
+
+async function stopPaneProcessGroup(panePid, options = {}) {
+  const normalizedPanePid = Number(panePid || 0);
+  const pgid = await getProcessGroupId(normalizedPanePid);
+  if (!pgid) {
+    return {
+      panePid: normalizedPanePid,
+      pgid: 0,
+      signaled: false,
+      finalSignal: "",
+      stillRunning: false,
+      stopped: false
+    };
+  }
+
+  const termination = await terminateProcessGroup(pgid, {
+    graceMs: Number(options.graceMs || 1500)
+  });
+  return {
+    panePid: normalizedPanePid,
+    ...termination,
+    stopped: termination.signaled && !termination.stillRunning
   };
 }
 
