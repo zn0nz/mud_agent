@@ -17,6 +17,24 @@
       "sendMode": "tmux_keys",
       "isBuiltIn": true,
       "notes": "TinTin++ launcher bundled in the repo."
+    },
+    {
+      "id": "tlbb",
+      "name": "天龙八部 TLBB",
+      "host": "tl.maoyu.com",
+      "port": 8888,
+      "encoding": "GBK",
+      "protocol": "telnet",
+      "launcherType": "custom_telnet",
+      "launcherCommand": "luit -encoding GBK telnet tl.maoyu.com 8888",
+      "windowName": "tlbb",
+      "windowNames": [
+        "tlbb"
+      ],
+      "tmuxSession": "0",
+      "sendMode": "pane_tty",
+      "isBuiltIn": true,
+      "notes": "Chinese TLBB server. Uses luit for GBK output and pane_tty input for safer non-UTF-8 command sending."
     }
   ]
 }

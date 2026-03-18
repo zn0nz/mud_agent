@@ -1343,7 +1343,11 @@ function resolveScript(commandPath) {
     return commandPath;
   }
 
-  return path.resolve(repoRoot, commandPath);
+  if (commandPath.includes("/") || commandPath.startsWith(".")) {
+    return path.resolve(repoRoot, commandPath);
+  }
+
+  return commandPath;
 }
 
 function resolveExecutable(commandPath) {
