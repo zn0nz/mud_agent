@@ -1464,6 +1464,7 @@
       let currentInteractiveAgentTarget = "";
       let lastSuggestedPrompt = "";
       let interactiveAgentSessions = [];
+      let discoveredGameSessions = [];
       let agentRuntimeProfiles = [];
       let defaultAgentRuntimeProfileId = "default";
       let currentAgentRuntimeProfileId = "default";
@@ -3122,6 +3123,34 @@
         reconnectTerminalStreams();
       }
 
+      async function loadDiscoveredGameSessions({ refreshOutputIfChanged = false } = {}) {
+        const data = await api("/api/sessions");
+        discoveredGameSessions = data.sessions || [];
+        const server = selectedServer();
+        if (!server) {
+          return;
+        }
+
+        const discoveredSession = discoveredGameSessions.find((session) => session.serverId === server.id) || null;
+        const nextTarget = discoveredSession?.target || "";
+        const currentBelongsToServer = targetBelongsToServer(currentTarget, server);
+        const shouldSyncTarget =
+          !currentTarget || !currentBelongsToServer || (currentBelongsToServer && !nextTarget);
+
+        if (!shouldSyncTarget) {
+          return;
+        }
+
+        const targetChanged = currentTarget !== nextTarget;
+        currentTarget = nextTarget;
+        reconnectTerminalStreams();
+        refreshDashboardSummary();
+
+        if (targetChanged && refreshOutputIfChanged && currentTarget) {
+          await refreshOutput();
+        }
+      }
+
       async function startAgentSession() {
         const agent = selectedAgent();
         const server = selectedServer();
@@ -3632,6 +3661,7 @@
         writeStoredValue(selectedServerStorageKey, serverSelect.value);
         syncFormToSelection();
         reconnectTerminalStreams();
+        loadDiscoveredGameSessions({ refreshOutputIfChanged: true }).catch(setStatusFromError);
         loadLoginProfiles().catch(setStatusFromError);
         loadPromptPreview().catch(setStatusFromError);
       });
@@ -3739,6 +3769,16 @@
       Promise.all([loadServers(), loadAgents()])
         .then(async () => {
           try {
+            await loadDiscoveredGameSessions({ refreshOutputIfChanged: true });
+          } catch (error) {
+            discoveredGameSessions = [];
+            setStatusMessage(
+              `${error.code || "GAME_SESSIONS_UNAVAILABLE"}: ${error.message}`,
+              "warn"
+            );
+          }
+
+          try {
             await loadInteractiveAgentSessions();
           } catch (error) {
             interactiveAgentSessions = [];
@@ -3751,6 +3791,9 @@
 
           syncAgentSelection();
           updateAgentRunUi();
+          window.setInterval(() => {
+            loadDiscoveredGameSessions().catch(() => {});
+          }, 5000);
           return loadPromptPreview({ force: true });
         })
         .catch(setStatusFromError);
