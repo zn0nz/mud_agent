@@ -3133,9 +3133,7 @@
 
         const discoveredSession = discoveredGameSessions.find((session) => session.serverId === server.id) || null;
         const nextTarget = discoveredSession?.target || "";
-        const currentBelongsToServer = targetBelongsToServer(currentTarget, server);
-        const shouldSyncTarget =
-          !currentTarget || !currentBelongsToServer || (currentBelongsToServer && !nextTarget);
+        const shouldSyncTarget = currentTarget !== nextTarget;
 
         if (!shouldSyncTarget) {
           return;

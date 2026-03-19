@@ -1343,6 +1343,36 @@ async function killTmuxWindow(target) {
   }
 }
 
+async function renameTmuxWindow(target, windowName) {
+  try {
+    await runTmux(["rename-window", "-t", target, windowName]);
+    const sessionName = target.includes(":") ? target.split(":")[0] : target;
+    return `${sessionName}:${windowName}`;
+  } catch (error) {
+    if (isMissingTmuxTargetError(error)) {
+      throw createError(`Unknown tmux target: ${target}`, "INVALID_TARGET", 404, {
+        target
+      });
+    }
+    throw error;
+  }
+}
+
+async function respawnTmuxWindow(target, command) {
+  try {
+    await runTmux(["respawn-window", "-k", "-t", target, command]);
+    const { stdout } = await runTmux(["display-message", "-p", "-t", target, "#{session_name}:#{window_name}"]);
+    return stdout.trim();
+  } catch (error) {
+    if (isMissingTmuxTargetError(error)) {
+      throw createError(`Unknown tmux target: ${target}`, "INVALID_TARGET", 404, {
+        target
+      });
+    }
+    throw error;
+  }
+}
+
 async function sendViaPaneTty(target, textToSend, encoding, options = {}) {
   const scriptPath = path.join(repoRoot, "scripts", "tmux-pane-send.sh");
   const args = ["-t", target, "-e", encoding];
@@ -1621,6 +1651,28 @@ function resolveWorkingDirectory(workingDirectory) {
 function getWindowNames(server) {
   const names = new Set([server.windowName, ...(server.windowNames || [])].filter(Boolean));
   return [...names];
+}
+
+function compareTmuxWindowCandidates(left, right, preferredWindowName = "") {
+  const leftExact = left.windowName === preferredWindowName ? 1 : 0;
+  const rightExact = right.windowName === preferredWindowName ? 1 : 0;
+  if (leftExact !== rightExact) {
+    return rightExact - leftExact;
+  }
+
+  const leftLive = left.paneDead ? 0 : 1;
+  const rightLive = right.paneDead ? 0 : 1;
+  if (leftLive !== rightLive) {
+    return rightLive - leftLive;
+  }
+
+  const leftActive = left.active ? 1 : 0;
+  const rightActive = right.active ? 1 : 0;
+  if (leftActive !== rightActive) {
+    return rightActive - leftActive;
+  }
+
+  return right.index - left.index;
 }
 
 function supportsInteractiveTmux(agentDefinition) {
@@ -2427,26 +2479,47 @@ function validateServerPayload(payload, { existingId } = {}) {
 async function createOrReuseWindow(server, tmuxSession) {
   const windows = await listTmuxWindows(tmuxSession);
   const existingNames = new Set(getWindowNames(server));
-  const existing = windows.find((window) => existingNames.has(window.windowName));
-  if (existing) {
-    const paneState = await inspectTmuxWindow(existing.target);
-    if (paneState.paneDead) {
-      await killTmuxWindow(existing.target).catch(() => {});
-    } else {
-      return {
-        id: existing.target,
-        target: existing.target,
-        tmuxSession,
-        windowName: existing.windowName,
-        serverId: server.id,
-        encoding: normalizeEncoding(server.encoding),
-        sendMode: server.sendMode,
-        reused: true
-      };
+  const candidates = [];
+
+  for (const window of windows) {
+    if (!existingNames.has(window.windowName)) {
+      continue;
     }
+
+    candidates.push({
+      ...window,
+      ...(await inspectTmuxWindow(window.target))
+    });
   }
 
+  candidates.sort((left, right) => compareTmuxWindowCandidates(left, right, server.windowName));
+  const existing = candidates[0] || null;
   const launcherCommand = resolveScript(server.launcherCommand);
+  if (existing) {
+    let target = existing.target;
+    let windowName = existing.windowName;
+
+    if (windowName !== server.windowName) {
+      target = await renameTmuxWindow(target, server.windowName);
+      windowName = server.windowName;
+    }
+
+    if (existing.paneDead) {
+      target = await respawnTmuxWindow(target, launcherCommand);
+    }
+
+    return {
+      id: target,
+      target,
+      tmuxSession,
+      windowName,
+      serverId: server.id,
+      encoding: normalizeEncoding(server.encoding),
+      sendMode: server.sendMode,
+      reused: true
+    };
+  }
+
   const { stdout } = await runTmux([
     "new-window",
     "-P",
@@ -2649,7 +2722,7 @@ async function findInteractiveAgentWindow(agentDefinition, tmuxSession, options 
   const { includeDead = false } = options;
   const windows = await listTmuxWindows(tmuxSession);
   const existingNames = new Set(getInteractiveWindowNames(agentDefinition));
-  let deadWindow = null;
+  const candidates = [];
 
   for (const window of windows) {
     if (!existingNames.has(window.windowName)) {
@@ -2662,16 +2735,17 @@ async function findInteractiveAgentWindow(agentDefinition, tmuxSession, options 
       ...paneState
     };
 
-    if (!candidate.paneDead) {
-      return candidate;
+    if (!includeDead && candidate.paneDead) {
+      continue;
     }
 
-    if (includeDead && !deadWindow) {
-      deadWindow = candidate;
-    }
+    candidates.push(candidate);
   }
 
-  return includeDead ? deadWindow : null;
+  candidates.sort((left, right) =>
+    compareTmuxWindowCandidates(left, right, agentDefinition.interactiveWindowName || `${agentDefinition.id}_tui`)
+  );
+  return candidates[0] || null;
 }
 
 function buildInteractiveAgentCommand(agentDefinition, runtimeProfiles = null, selectedProfile = null) {
@@ -2722,21 +2796,42 @@ async function createOrReuseInteractiveAgentWindow(agentDefinition, agentProfile
   });
   const runtimeProfiles = await loadAgentRuntimeProfileById(agentDefinition, agentProfileId);
   const selectedProfile = runtimeProfiles.selectedProfile;
-  if (existing) {
-    const existingProfileId = interactiveAgentRuntimeProfiles.get(existing.target) || interactiveAgentRuntimeProfiles.get(agentDefinition.id) || "default";
-    if (existing.paneDead) {
-      await killTmuxWindow(existing.target).catch(() => {});
-      interactiveAgentRuntimeProfiles.delete(existing.target);
-    } else if (existingProfileId === selectedProfile.id) {
-      return summarizeInteractiveAgentSession(agentDefinition, existing.target, tmuxSession, true, selectedProfile);
-    } else {
-      await killTmuxWindow(existing.target).catch(() => {});
-      interactiveAgentRuntimeProfiles.delete(existing.target);
-    }
-  }
-
   const windowName = agentDefinition.interactiveWindowName || `${agentDefinition.id}_tui`;
   const command = buildInteractiveAgentCommand(agentDefinition, runtimeProfiles, selectedProfile);
+  if (existing) {
+    let target = existing.target;
+    const existingProfileId =
+      interactiveAgentRuntimeProfiles.get(existing.target) || interactiveAgentRuntimeProfiles.get(agentDefinition.id) || "default";
+
+    if (existing.windowName !== windowName) {
+      const previousTarget = target;
+      target = await renameTmuxWindow(target, windowName);
+      interactiveAgentRuntimeProfiles.delete(previousTarget);
+    }
+
+    if (existing.paneDead || existingProfileId !== selectedProfile.id) {
+      target = await respawnTmuxWindow(target, command);
+      await runTmux(["set-window-option", "-t", target, "remain-on-exit", "on"]);
+      await sleep(150);
+      const paneState = await inspectInteractiveAgentPane(target);
+      if (paneState.paneDead) {
+        throw createError(
+          `Interactive agent ${target} exited immediately after launch`,
+          "AGENT_INTERACTIVE_START_FAILED",
+          500,
+          {
+            target,
+            command
+          }
+        );
+      }
+    }
+
+    interactiveAgentRuntimeProfiles.set(target, selectedProfile.id);
+    interactiveAgentRuntimeProfiles.set(agentDefinition.id, selectedProfile.id);
+    return summarizeInteractiveAgentSession(agentDefinition, target, tmuxSession, true, selectedProfile);
+  }
+
   const { stdout } = await runTmux([
     "new-window",
     "-P",
@@ -3800,7 +3895,9 @@ async function handleApi(request, response, url) {
     for (const server of servers) {
       try {
         const windows = await listTmuxWindows(server.tmuxSession || "0");
-        const match = windows.find((window) => getWindowNames(server).includes(window.windowName));
+        const matchingWindows = windows.filter((window) => getWindowNames(server).includes(window.windowName));
+        matchingWindows.sort((left, right) => compareTmuxWindowCandidates(left, right, server.windowName));
+        const match = matchingWindows[0];
         if (match) {
           sessions.push({
             id: match.target,
