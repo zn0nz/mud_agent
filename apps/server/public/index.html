@@ -2063,6 +2063,7 @@
         let reconnectTimer = 0;
         let pendingMessages = [];
         let pendingSnapshot = null;
+        let pendingAppends = [];
         let writingSnapshot = false;
         let lastRenderedSnapshot = "";
         let lastPlaceholderMessage = null;
@@ -2088,7 +2089,11 @@
           Boolean(right) &&
           left.target === right.target &&
           (left.serverId || "") === (right.serverId || "") &&
-          (left.encoding || "") === (right.encoding || "");
+          (left.encoding || "") === (right.encoding || "") &&
+          (left.streamMode || "snapshot") === (right.streamMode || "snapshot") &&
+          (left.renderMode || "hybrid") === (right.renderMode || "hybrid") &&
+          String(left.lines || "220") === String(right.lines || "220") &&
+          String(left.intervalMs || "100") === String(right.intervalMs || "100");
 
         const queueFit = () => {
           window.requestAnimationFrame(() => {
@@ -2111,6 +2116,7 @@
             return;
           }
           pendingSnapshot = null;
+          pendingAppends = [];
           writingSnapshot = false;
           lastRenderedSnapshot = "";
           lastPlaceholderMessage = nextMessage;
@@ -2138,6 +2144,7 @@
           writingSnapshot = true;
           lastRenderedSnapshot = snapshot;
           lastPlaceholderMessage = null;
+          const renderMode = desiredConnection?.renderMode || "hybrid";
           const shrankMeaningfully =
             hasContent &&
             hardResyncShrinkRatio > 0 &&
@@ -2145,6 +2152,7 @@
             snapshot.length + 120 < previousSnapshot.length &&
             snapshot.length <= Math.floor(previousSnapshot.length * hardResyncShrinkRatio);
           const shouldHardResync =
+            renderMode === "full_reset" ||
             forceHardResync ||
             !hasContent ||
             shrankMeaningfully ||
@@ -2160,7 +2168,9 @@
             writingSnapshot = false;
             if (pendingSnapshot !== null) {
               flushSnapshot();
+              return;
             }
+            flushAppends();
           };
 
           if (shouldHardResync) {
@@ -2184,6 +2194,38 @@
           flushSnapshot();
         };
 
+        const flushAppends = () => {
+          if (writingSnapshot || pendingSnapshot !== null || pendingAppends.length === 0) {
+            return;
+          }
+
+          const chunk = pendingAppends.shift();
+          if (!chunk) {
+            flushAppends();
+            return;
+          }
+
+          writingSnapshot = true;
+          lastPlaceholderMessage = null;
+          terminal.write(chunk, () => {
+            hasContent = true;
+            writingSnapshot = false;
+            if (pendingSnapshot !== null) {
+              flushSnapshot();
+              return;
+            }
+            flushAppends();
+          });
+        };
+
+        const appendOutput = (output) => {
+          if (!output) {
+            return;
+          }
+          pendingAppends.push(String(output));
+          flushAppends();
+        };
+
         const clearReconnectTimer = () => {
           if (reconnectTimer) {
             clearTimeout(reconnectTimer);
@@ -2201,6 +2243,7 @@
           hasContent = false;
           renderedSnapshotCount = 0;
           forceHardResync = true;
+          pendingAppends = [];
           pendingMessages = [];
           if (socket) {
             const socketToClose = socket;
@@ -2271,9 +2314,12 @@
 
           const params = new URLSearchParams({
             target: config.target,
-            intervalMs: "100",
-            lines: "220"
+            intervalMs: String(config.intervalMs || 100),
+            lines: String(config.lines || 220)
           });
+          if (config.streamMode) {
+            params.set("streamMode", config.streamMode);
+          }
           if (config.serverId) {
             params.set("serverId", config.serverId);
           }
@@ -2292,7 +2338,9 @@
             setLive(true);
             flushPendingMessages();
             queueFit();
-            sendMessage({ type: "refresh" });
+            if ((config.streamMode || "snapshot") !== "append") {
+              sendMessage({ type: "refresh" });
+            }
           });
 
           activeSocket.addEventListener("message", (event) => {
@@ -2302,6 +2350,10 @@
             const message = JSON.parse(event.data);
             if (message.type === "snapshot") {
               renderSnapshot(message.output);
+              return;
+            }
+            if (message.type === "append") {
+              appendOutput(message.output);
               return;
             }
             if (message.type === "ready") {
@@ -2506,7 +2558,9 @@
         if (currentInteractiveAgentTarget) {
           agentTerminal.connect({
             target: currentInteractiveAgentTarget,
-            encoding: "UTF-8"
+            encoding: "UTF-8",
+            streamMode: "append",
+            lines: currentInteractiveAgentId === "codex" ? 100 : 140
           });
         } else {
           agentTerminal.disconnect();

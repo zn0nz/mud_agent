@@ -6,6 +6,7 @@ import http from "node:http";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { EventEmitter } from "node:events";
+import { StringDecoder } from "node:string_decoder";
 import { WebSocketServer } from "ws";
 
 import {
@@ -28,6 +29,7 @@ const xtermVendorAssets = new Map([
 ]);
 const runtimeDir = path.join(repoRoot, "apps", "server", ".runtime");
 const interactivePromptDir = path.join(runtimeDir, "interactive-prompts");
+const terminalPipeDir = path.join(runtimeDir, "terminal-pipes");
 const builtInServerConfigPath = path.join(repoRoot, "config", "servers.json");
 const localServerConfigPath = path.join(repoRoot, "config", "local.servers.json");
 const localSecretsPath = path.join(repoRoot, "config", "local.secrets.json");
@@ -40,11 +42,13 @@ const agentEventBus = new EventEmitter();
 const agentRuns = new Map();
 const interactiveAutoplayWorkers = new Map();
 const interactiveAgentRuntimeProfiles = new Map();
+const terminalPipeTaps = new Map();
 const MAX_RETAINED_RUNS = 20;
 
 let writeLock = Promise.resolve();
 let nextStreamClientId = 1;
 let nextAgentRunId = 1;
+let nextTerminalPipeTapId = 1;
 
 function clampNumber(value, min, max, fallback) {
   const numericValue = Number(value);
@@ -1100,6 +1104,177 @@ async function capturePane(target, lines = 200, options = {}) {
     }
     throw error;
   }
+}
+
+function shellQuote(value) {
+  return `'${String(value || "").replace(/'/g, `'\\''`)}'`;
+}
+
+function sanitizeRuntimeFileComponent(value) {
+  return (
+    String(value || "")
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "terminal"
+  );
+}
+
+async function pumpTerminalPipeTap(tap) {
+  if (!tap || tap.closed || tap.pumping) {
+    return;
+  }
+
+  tap.pumping = true;
+  try {
+    const stats = await tap.handle.stat();
+    while (stats.size > tap.offset) {
+      const chunkSize = Math.min(stats.size - tap.offset, 64 * 1024);
+      const buffer = Buffer.allocUnsafe(chunkSize);
+      const { bytesRead } = await tap.handle.read(buffer, 0, chunkSize, tap.offset);
+      if (!bytesRead) {
+        break;
+      }
+      tap.offset += bytesRead;
+      const text = tap.decoder.write(buffer.subarray(0, bytesRead));
+      if (!text) {
+        continue;
+      }
+      for (const listener of tap.listeners) {
+        try {
+          listener(text);
+        } catch {
+          // Listener cleanup is handled by the caller's socket lifecycle.
+        }
+      }
+    }
+  } finally {
+    tap.pumping = false;
+  }
+}
+
+function scheduleTerminalPipeTapCleanup(tap) {
+  if (!tap || tap.closed || tap.listeners.size > 0 || tap.cleanupTimer) {
+    return;
+  }
+
+  tap.cleanupTimer = setTimeout(() => {
+    closeTerminalPipeTap(tap.target).catch(() => {});
+  }, 5000);
+}
+
+async function closeTerminalPipeTap(target) {
+  const tap = terminalPipeTaps.get(target);
+  if (!tap) {
+    return;
+  }
+
+  terminalPipeTaps.delete(target);
+  tap.closed = true;
+
+  if (tap.pollTimer) {
+    clearInterval(tap.pollTimer);
+    tap.pollTimer = null;
+  }
+  if (tap.cleanupTimer) {
+    clearTimeout(tap.cleanupTimer);
+    tap.cleanupTimer = null;
+  }
+
+  try {
+    await runTmux(["pipe-pane", "-t", target]);
+  } catch (error) {
+    if (!isMissingTmuxTargetError(error)) {
+      throw error;
+    }
+  }
+
+  try {
+    const trailing = tap.decoder.end();
+    if (trailing) {
+      for (const listener of tap.listeners) {
+        try {
+          listener(trailing);
+        } catch {
+          // Listener cleanup is handled by the caller's socket lifecycle.
+        }
+      }
+    }
+  } finally {
+    tap.listeners.clear();
+  }
+
+  await tap.handle.close().catch(() => {});
+  await fs.unlink(tap.filePath).catch(() => {});
+}
+
+async function ensureTerminalPipeTap(target) {
+  const existing = terminalPipeTaps.get(target);
+  if (existing && !existing.closed) {
+    if (existing.cleanupTimer) {
+      clearTimeout(existing.cleanupTimer);
+      existing.cleanupTimer = null;
+    }
+    return existing;
+  }
+
+  await fs.mkdir(terminalPipeDir, { recursive: true });
+  const filePath = path.join(
+    terminalPipeDir,
+    `${sanitizeRuntimeFileComponent(target)}-${nextTerminalPipeTapId++}.log`
+  );
+  await fs.writeFile(filePath, "");
+
+  try {
+    await runTmux(["pipe-pane", "-t", target, `cat >> ${shellQuote(filePath)}`]);
+  } catch (error) {
+    await fs.unlink(filePath).catch(() => {});
+    if (isMissingTmuxTargetError(error)) {
+      throw createError(`Unknown tmux target: ${target}`, "INVALID_TARGET", 404, {
+        target
+      });
+    }
+    throw error;
+  }
+
+  const handle = await fs.open(filePath, "r");
+  const tap = {
+    target,
+    filePath,
+    handle,
+    decoder: new StringDecoder("utf8"),
+    listeners: new Set(),
+    offset: 0,
+    closed: false,
+    pumping: false,
+    pollTimer: null,
+    cleanupTimer: null
+  };
+
+  tap.pollTimer = setInterval(() => {
+    pumpTerminalPipeTap(tap).catch(() => {});
+  }, 50);
+  terminalPipeTaps.set(target, tap);
+  return tap;
+}
+
+function subscribeTerminalPipeTap(target, listener) {
+  const tap = terminalPipeTaps.get(target);
+  if (!tap || tap.closed) {
+    throw createError(`No terminal pipe tap for target: ${target}`, "TERMINAL_PIPE_NOT_FOUND", 404, {
+      target
+    });
+  }
+
+  if (tap.cleanupTimer) {
+    clearTimeout(tap.cleanupTimer);
+    tap.cleanupTimer = null;
+  }
+
+  tap.listeners.add(listener);
+  return () => {
+    tap.listeners.delete(listener);
+    scheduleTerminalPipeTapCleanup(tap);
+  };
 }
 
 async function sendViaTmuxKeys(target, textToSend) {
@@ -4113,6 +4288,9 @@ async function handleTerminalWebSocket(socket, request, url) {
   const target = url.searchParams.get("target");
   const serverId = url.searchParams.get("serverId") || "";
   const requestedEncoding = url.searchParams.get("encoding");
+  const streamMode = String(url.searchParams.get("streamMode") || "snapshot").trim() === "append"
+    ? "append"
+    : "snapshot";
   const intervalMs = clampNumber(url.searchParams.get("intervalMs"), 50, 1000, 100);
   const lines = clampNumber(url.searchParams.get("lines"), 40, 400, 220);
 
@@ -4129,6 +4307,7 @@ async function handleTerminalWebSocket(socket, request, url) {
   let captureTimer = null;
   let captureInFlight = false;
   let lastOutput = "";
+  let releasePipeSubscription = null;
 
   const clearCaptureTimer = () => {
     if (captureTimer) {
@@ -4143,6 +4322,10 @@ async function handleTerminalWebSocket(socket, request, url) {
     }
     closed = true;
     clearCaptureTimer();
+    if (releasePipeSubscription) {
+      releasePipeSubscription();
+      releasePipeSubscription = null;
+    }
   };
 
   const scheduleCapture = (delayMs = intervalMs) => {
@@ -4180,9 +4363,32 @@ async function handleTerminalWebSocket(socket, request, url) {
       });
     } finally {
       captureInFlight = false;
-      if (!closed) {
+      if (!closed && streamMode === "snapshot") {
         scheduleCapture();
       }
+    }
+  };
+
+  const runAppendSeed = async (force = false) => {
+    try {
+      const output = await capturePane(target, lines, {
+        includeAnsi: true
+      });
+      if (force || output !== lastOutput) {
+        lastOutput = output;
+        sendWebSocketMessage(socket, {
+          type: "snapshot",
+          target,
+          output
+        });
+      }
+    } catch (error) {
+      sendWebSocketMessage(socket, {
+        type: "error",
+        target,
+        code: error.code || "STREAM_CAPTURE_ERROR",
+        error: error.message
+      });
     }
   };
 
@@ -4247,12 +4453,20 @@ async function handleTerminalWebSocket(socket, request, url) {
           cols: clampNumber(payload.cols, 20, 500, 80),
           rows: clampNumber(payload.rows, 5, 200, 24)
         });
-        scheduleCapture(10);
+        if (streamMode === "append") {
+          await runAppendSeed(true);
+        } else {
+          scheduleCapture(10);
+        }
         return;
       }
 
       if (payload.type === "refresh") {
-        await runCapture(true);
+        if (streamMode === "append") {
+          await runAppendSeed(true);
+        } else {
+          await runCapture(true);
+        }
         return;
       }
 
@@ -4272,6 +4486,23 @@ async function handleTerminalWebSocket(socket, request, url) {
     target,
     session
   });
+
+  if (streamMode === "append") {
+    await ensureTerminalPipeTap(target);
+    await runAppendSeed(true);
+    releasePipeSubscription = subscribeTerminalPipeTap(target, (chunk) => {
+      if (closed || !chunk) {
+        return;
+      }
+      sendWebSocketMessage(socket, {
+        type: "append",
+        target,
+        output: chunk
+      });
+    });
+    return;
+  }
+
   await runCapture(true);
 }
 
