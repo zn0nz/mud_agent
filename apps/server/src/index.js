@@ -1615,6 +1615,11 @@ async function writeInteractivePromptFile(agentDefinition, target, prompt) {
     `- Target: ${target}`,
     `- Generated: ${new Date().toISOString()}`,
     ``,
+    `Hard constraints:`,
+    `- Operate only on the listed Target unless the backend explicitly changes it.`,
+    `- Do not create alternate game tmux windows such as *_debug or *_recovery.`,
+    `- If the game needs reconnect or relogin, do it in the same Target so the frontend stays attached.`,
+    ``,
     `---`,
     ``,
     normalizedPrompt,
@@ -1627,7 +1632,7 @@ async function writeInteractivePromptFile(agentDefinition, target, prompt) {
 
 function buildInteractivePromptInstruction(filePath) {
   return normalizeInteractivePromptInstruction(
-    `Read ${filePath}, treat it as your standing operating brief, and begin executing it immediately. Continue operating autonomously until you reach a real blocker or need approval for a risky action.`
+    `Read ${filePath}, treat it as your standing operating brief, and begin executing it immediately. Operate only on the listed tmux target and do not create alternate game windows. Continue operating autonomously until you reach a real blocker or need approval for a risky action.`
   );
 }
 
@@ -3332,12 +3337,14 @@ async function buildAgentPrompt({
       ? [
           "- Launch mode: create a new user.",
           "- Do not reuse saved credentials or an existing character.",
+          "- Stay inside the provided tmux target. Do not create a separate debug or recovery game window.",
           "- If the game is at account or character creation, continue from that fresh state.",
           `- Before finishing, save the new credentials for ${(server?.id || session?.serverId || "the server")} with ./scripts/save-login-profile.mjs.`
         ].join("\n")
       : [
           `- Launch mode: use an existing login profile${loginProfile?.label ? ` (${loginProfile.label})` : ""}.`,
           "- Reuse the existing saved profile instead of creating a new user.",
+          "- Stay inside the provided tmux target. Do not create a separate debug or recovery game window.",
           loginProfile?.id && (server?.id || session?.serverId)
             ? `- Selected profile: config/local.secrets.json -> ${(server?.id || session?.serverId)}.profiles.${loginProfile.id}`
             : "",
@@ -3389,6 +3396,7 @@ async function buildAgentPrompt({
     resolvedLaunchMode === "new-user"
       ? "- Reuse the live tmux window but create a new user instead of reusing saved credentials."
       : "- Reuse the existing live tmux session and character instead of creating a new session.",
+    `- Operate only on the provided target (${target}). Do not create alternate tmux game windows.`,
     "- Inspect the pane before sending commands so prompts and state are not skipped blindly.",
     "- Keep actions reversible and low-risk unless the user explicitly asks for a specific gameplay choice.",
     "- Follow the objective if one is set.",
