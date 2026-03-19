@@ -2035,7 +2035,14 @@
         return String(text || "").replace(/\r/g, "");
       }
 
-      function createTerminalController({ shell, emptyMessage, fontSize, onConnectionChange, onStatus }) {
+      function createTerminalController({
+        shell,
+        emptyMessage,
+        fontSize,
+        onConnectionChange,
+        onStatus,
+        resyncPolicy = {}
+      }) {
         const terminal = new Terminal({
           allowTransparency: true,
           convertEol: true,
@@ -2062,6 +2069,19 @@
         let hasContent = false;
         let lastReportedSize = "";
         let live = false;
+        let renderedSnapshotCount = 0;
+        let forceHardResync = true;
+
+        const parsedHardResyncEvery = Number(resyncPolicy.hardResyncEvery);
+        const hardResyncEvery = clamp(
+          Number.isFinite(parsedHardResyncEvery) ? parsedHardResyncEvery : 0,
+          0,
+          10000
+        );
+        const hardResyncShrinkRatio = Math.min(
+          Math.max(Number(resyncPolicy.hardResyncShrinkRatio) || 0, 0),
+          1
+        );
 
         const sameConnection = (left, right) =>
           Boolean(left) &&
@@ -2095,6 +2115,8 @@
           lastRenderedSnapshot = "";
           lastPlaceholderMessage = nextMessage;
           hasContent = false;
+          renderedSnapshotCount = 0;
+          forceHardResync = true;
           terminal.reset();
           terminal.write(`${nextMessage}\r\n`);
           terminal.scrollToTop();
@@ -2107,6 +2129,7 @@
 
           const snapshot = pendingSnapshot;
           pendingSnapshot = null;
+          const previousSnapshot = lastRenderedSnapshot;
 
           if (snapshot === lastRenderedSnapshot) {
             return;
@@ -2115,21 +2138,45 @@
           writingSnapshot = true;
           lastRenderedSnapshot = snapshot;
           lastPlaceholderMessage = null;
+          const shrankMeaningfully =
+            hasContent &&
+            hardResyncShrinkRatio > 0 &&
+            previousSnapshot.length >= 400 &&
+            snapshot.length + 120 < previousSnapshot.length &&
+            snapshot.length <= Math.floor(previousSnapshot.length * hardResyncShrinkRatio);
+          const shouldHardResync =
+            forceHardResync ||
+            !hasContent ||
+            shrankMeaningfully ||
+            (hardResyncEvery > 0 && renderedSnapshotCount > 0 && renderedSnapshotCount % hardResyncEvery === 0);
 
-          // Overwrite in-place: cursor home → content → clear remaining lines.
-          // This avoids terminal.reset() which blanks the screen and causes flicker.
-          const payload = hasContent
-            ? `\x1b[H${snapshot}\x1b[0J`
-            : snapshot;
-          hasContent = true;
-
-          terminal.write(payload, () => {
-            terminal.scrollToBottom();
+          const finishSnapshotWrite = () => {
+            hasContent = Boolean(snapshot);
+            renderedSnapshotCount += 1;
+            forceHardResync = false;
+            if (shouldHardResync) {
+              terminal.scrollToBottom();
+            }
             writingSnapshot = false;
             if (pendingSnapshot !== null) {
               flushSnapshot();
             }
-          });
+          };
+
+          if (shouldHardResync) {
+            terminal.reset();
+          }
+
+          if (!snapshot) {
+            finishSnapshotWrite();
+            return;
+          }
+
+          const payload = shouldHardResync
+            ? snapshot
+            : `\x1b[H${snapshot}\x1b[0J`;
+
+          terminal.write(payload, finishSnapshotWrite);
         };
 
         const renderSnapshot = (output) => {
@@ -2152,6 +2199,8 @@
           lastReportedSize = "";
           lastRenderedSnapshot = "";
           hasContent = false;
+          renderedSnapshotCount = 0;
+          forceHardResync = true;
           pendingMessages = [];
           if (socket) {
             const socketToClose = socket;
@@ -2212,6 +2261,7 @@
 
           desiredConnection = { ...config };
           lastReportedSize = "";
+          forceHardResync = true;
           clearReconnectTimer();
           if (socket) {
             const currentSocket = socket;
@@ -2309,6 +2359,7 @@
         });
 
         terminal.onResize(() => {
+          forceHardResync = true;
           reportResize();
         });
 
@@ -2330,6 +2381,7 @@
           },
           setFontSize(size) {
             terminal.options.fontSize = size;
+            forceHardResync = true;
             queueFit();
           },
           setInputEnabled(enabled) {
@@ -2384,14 +2436,22 @@
         emptyMessage: t("output_terminal_placeholder"),
         fontSize: outputFontSize,
         onConnectionChange: refreshDashboardSummary,
-        onStatus: setStatusMessage
+        onStatus: setStatusMessage,
+        resyncPolicy: {
+          hardResyncEvery: 240,
+          hardResyncShrinkRatio: 0.55
+        }
       });
       const agentTerminal = createTerminalController({
         shell: agentShell,
         emptyMessage: t("agent_terminal_idle"),
         fontSize: agentFontSize,
         onConnectionChange: refreshDashboardSummary,
-        onStatus: setStatusMessage
+        onStatus: setStatusMessage,
+        resyncPolicy: {
+          hardResyncEvery: 60,
+          hardResyncShrinkRatio: 0.75
+        }
       });
 
       function selectedServer() {
