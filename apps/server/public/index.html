@@ -9,6 +9,7 @@
       :root {
         --sidebar-width: 292px;
         --topbar-height: 52px;
+        --tmux-font-family: "Cascadia Code", "Cascadia Mono", "Microsoft YaHei UI", "Microsoft YaHei", "DengXian", "PingFang SC", "PingFang TC", "Noto Sans Mono CJK SC", "Noto Sans Mono CJK TC", "Sarasa Mono SC", "Sarasa Mono TC", "IBM Plex Mono", "Consolas", monospace;
         --tmux-font-size: 14px;
         --radius: 14px;
         --radius-sm: 10px;
@@ -710,7 +711,7 @@
         border: 1px solid var(--line);
         border-radius: 12px;
         background: var(--bg-terminal);
-        font-family: "IBM Plex Mono", "Consolas", monospace;
+        font-family: var(--tmux-font-family);
         font-size: var(--tmux-font-size);
         line-height: 1.4;
       }
@@ -769,7 +770,7 @@
       }
 
       .target-card {
-        font-family: "IBM Plex Mono", "Consolas", monospace;
+        font-family: var(--tmux-font-family);
         word-break: break-word;
       }
 
@@ -2041,7 +2042,7 @@
           cursorBlink: false,
           cursorStyle: "block",
           disableStdin: true,
-          fontFamily: '"IBM Plex Mono", "Consolas", monospace',
+          fontFamily: getComputedStyle(shell).fontFamily,
           fontSize,
           scrollback: 1000,
           theme: buildTerminalTheme()
